@@ -1,0 +1,3536 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>주둥아리 배드민턴</title>
+  <style>
+    :root {
+      --bg: #071827;
+      --panel: #122334;
+      --panel-2: #182a3f;
+      --line: #d8dde3;
+      --text: #26323d;
+      --muted: #6d7883;
+      --green: #73e33e;
+      --green-2: #42b92f;
+      --blue: #0b66d5;
+      --yellow: #fff200;
+      --red: #8a0039;
+      --wait: #6d7784;
+      --shadow: 0 8px 18px rgba(0, 0, 0, .18);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      background: #f7f8fa;
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body.theme-dark {
+      --line: #354152;
+      --text: #e6edf5;
+      background: #101820;
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .hidden { display: none !important; }
+
+    .login-page {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 18px;
+      color: #163225;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.62) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,.5) 1px, transparent 1px),
+        radial-gradient(circle at 18% 18%, rgba(55, 184, 127, .22), transparent 28%),
+        radial-gradient(circle at 82% 22%, rgba(28, 113, 216, .16), transparent 30%),
+        linear-gradient(145deg, #eef8f2, #f6fbff 52%, #e8f4ee);
+      background-size: 74px 74px, 74px 74px, auto, auto, auto;
+    }
+
+    .login-shell {
+      width: min(520px, 100%);
+      text-align: center;
+      position: relative;
+    }
+
+    .brand-mark {
+      width: 78px;
+      height: 78px;
+      margin: 0 auto 16px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(135deg, #0f8f5f, #1456c8);
+      box-shadow: 0 18px 42px rgba(20, 86, 200, .24);
+      font-size: 0;
+    }
+
+    .brand-mark::before {
+      content: "JD";
+      font-size: 28px;
+      font-weight: 1000;
+      letter-spacing: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      color: #102a3d;
+      font-size: clamp(36px, 8vw, 48px);
+      font-weight: 1000;
+      letter-spacing: 0;
+    }
+
+    .brand-subtitle {
+      margin: 10px 0 42px;
+      color: #537061;
+      letter-spacing: .18em;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+
+    .login-card {
+      position: relative;
+      padding: 34px 38px 40px;
+      border: 1px solid rgba(32, 83, 64, .12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: 0 24px 70px rgba(28, 67, 91, .16);
+      text-align: left;
+      backdrop-filter: blur(12px);
+    }
+
+    .login-label {
+      display: block;
+      margin-bottom: 16px;
+      color: #174a35;
+      font-weight: 900;
+      font-size: 17px;
+    }
+
+    .login-input {
+      width: 100%;
+      height: 66px;
+      border: 1px solid #d7e0e7;
+      border-radius: 12px;
+      padding: 0 20px;
+      color: #102a3d;
+      background: #fff;
+      font-size: 22px;
+      outline: 0;
+      box-shadow: inset 0 1px 0 rgba(0,0,0,.03);
+    }
+
+    .login-input::placeholder { color: #91a0aa; }
+
+    .primary-btn {
+      width: 100%;
+      min-height: 66px;
+      margin-top: 18px;
+      border-radius: 12px;
+      color: #fff;
+      background: linear-gradient(135deg, #0f8f5f, #1456c8);
+      font-weight: 1000;
+      font-size: 21px;
+      box-shadow: 0 14px 28px rgba(20, 86, 200, .22);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #7c8b94;
+      margin: 26px 0 16px;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .divider::before, .divider::after {
+      content: "";
+      height: 1px;
+      width: 70px;
+      background: rgba(75, 99, 118, .18);
+    }
+
+    .guest-btn {
+      width: 100%;
+      min-height: 66px;
+      border: 1px solid #d7e0e7;
+      border-radius: 12px;
+      color: #155f44;
+      background: #f6fbf8;
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .admin-link {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    .icon-link {
+      padding: 8px 10px;
+      color: rgba(220, 242, 214, .48);
+      background: transparent;
+      font-size: 16px;
+    }
+
+    .member-count {
+      margin-top: 24px;
+      text-align: center;
+      color: #5f7769;
+      font-weight: 800;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background:
+        linear-gradient(90deg, rgba(18, 74, 54, .045) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(18, 74, 54, .04) 1px, transparent 1px),
+        radial-gradient(circle at 12% 10%, rgba(15, 143, 95, .12), transparent 28%),
+        radial-gradient(circle at 88% 0%, rgba(20, 86, 200, .1), transparent 32%),
+        #f4f8f6;
+      background-size: 54px 54px, 54px 54px, auto, auto, auto;
+    }
+
+    body.theme-dark .app,
+    body.theme-dark .topbar,
+    body.theme-dark .match-toolbar,
+    body.theme-dark .bottom-nav,
+    body.theme-dark .court-cell,
+    body.theme-dark .waiting-strip,
+    body.theme-dark table,
+    body.theme-dark th,
+    body.theme-dark td {
+      background: #101820;
+      color: #e6edf5;
+      border-color: #354152;
+    }
+
+    body.theme-dark .mini-btn,
+    body.theme-dark .toolbar-btn,
+    body.theme-dark .court-start-btn {
+      background: #1b2734;
+      color: #f2f6fb;
+      border-color: #526174;
+    }
+
+    body.theme-dark .bottom-nav {
+      box-shadow: 0 -2px 8px rgba(0,0,0,.35);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 60px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(30, 65, 84, .12);
+      background: rgba(255, 255, 255, .9);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(31, 65, 83, .07);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar-title {
+      min-width: 0;
+      font-weight: 1000;
+      color: #12354a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0;
+    }
+
+    .top-actions { display: flex; gap: 6px; align-items: center; }
+
+    .mini-btn, .toolbar-btn {
+      min-height: 36px;
+      padding: 8px 11px;
+      border: 1px solid rgba(33, 67, 87, .14);
+      border-radius: 8px;
+      color: #1b2b36;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 4px 12px rgba(31, 65, 83, .1);
+      font-weight: 800;
+    }
+
+    .mini-btn.active { background: #263a58; color: #fff; }
+
+    .admin-menu-toolbar {
+      color: #fff !important;
+      background: linear-gradient(135deg, #0f8f5f, #1456c8) !important;
+      border-color: transparent !important;
+      box-shadow: 0 8px 18px rgba(20, 86, 200, .24) !important;
+      font-weight: 1000 !important;
+    }
+
+    .kakao-join-btn {
+      border-color: #f6d84d !important;
+      color: #211f1f !important;
+      background: linear-gradient(135deg, #fee500, #ffd43b) !important;
+      box-shadow: 0 8px 18px rgba(254, 229, 0, .32) !important;
+      font-weight: 1000 !important;
+    }
+
+    .kakao-join-btn {
+      width: 84px !important;
+      min-height: 34px !important;
+      padding: 6px 7px !important;
+      font-size: 12px !important;
+    }
+
+    .content {
+      overflow: auto;
+      padding: 10px 10px calc(90px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .view { min-height: 100%; }
+
+    .match-toolbar {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid rgba(31, 65, 83, .1);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .86);
+      z-index: 8;
+      max-width: 100%;
+      overflow: hidden;
+      box-shadow: 0 10px 26px rgba(31, 65, 83, .08);
+      backdrop-filter: blur(8px);
+      margin-bottom: 10px;
+    }
+
+    .match-toolbar .toolbar-start {
+      min-width: 64px;
+      background: #f5f5f5;
+      font-size: 14px;
+    }
+
+    .toolbar-row {
+      display: grid;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toolbar-row-top {
+      grid-template-columns: auto auto auto;
+      justify-content: start;
+    }
+
+    .toolbar-row-match,
+    .toolbar-row-actions {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .toolbar-row .mini-btn {
+      width: 100%;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .court-grid {
+      display: grid;
+      grid-template-columns: 96px repeat(4, minmax(0, 1fr));
+      border: 1px solid rgba(31, 65, 83, .14);
+      width: 100%;
+      min-width: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(31, 65, 83, .08);
+      background: #fff;
+    }
+
+    .court-cell {
+      min-height: 78px;
+      border-right: 1px solid rgba(31, 65, 83, .12);
+      border-bottom: 1px solid rgba(31, 65, 83, .12);
+      display: grid;
+      place-items: center;
+      padding: 7px;
+      background: rgba(255, 255, 255, .96);
+    }
+
+    .court-cell.game-court {
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+    }
+
+    .court-cell.wait-court {
+      background: linear-gradient(180deg, #fffefa, #fff8e7);
+    }
+
+    .court-cell.court-label-cell.game-court {
+      background: linear-gradient(180deg, #eaf4ff, #f7fbff);
+      border-left: 5px solid #256fd0;
+    }
+
+    .court-cell.court-label-cell.wait-court {
+      background: linear-gradient(180deg, #fff7dd, #fffdf6);
+      border-left: 5px solid #d69a13;
+    }
+
+    body.theme-dark .court-cell.game-court {
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+    }
+
+    body.theme-dark .court-cell.wait-court {
+      background: linear-gradient(180deg, #fffefa, #fff8e7);
+    }
+
+    body.theme-dark .court-cell.court-label-cell.game-court {
+      background: linear-gradient(180deg, #eaf4ff, #f7fbff);
+      border-left: 5px solid #256fd0;
+    }
+
+    body.theme-dark .court-cell.court-label-cell.wait-court {
+      background: linear-gradient(180deg, #fff7dd, #fffdf6);
+      border-left: 5px solid #d69a13;
+    }
+
+    .court-label {
+      color: #444;
+      font-size: 18px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    body.theme-dark .court-label {
+      color: #e6edf5;
+    }
+
+    .start-game {
+      width: 100%;
+      height: 74px;
+      border-radius: 4px;
+      border: 1px solid #d5d9de;
+      color: #222;
+      background: #f8f8f8;
+      box-shadow: var(--shadow);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .match-toolbar .start-game {
+      width: auto;
+      height: 34px;
+      padding: 0 10px;
+    }
+
+    .member-manage-btn {
+      min-width: 86px !important;
+      color: #fff !important;
+      background: #168b42 !important;
+      border-color: #0e6930 !important;
+      font-weight: 950;
+      box-shadow: 0 3px 8px rgba(22, 139, 66, .28);
+    }
+
+    .court-start-btn {
+      min-width: 76px;
+      min-height: 44px;
+      border: 1px solid #c3c8ce;
+      border-radius: 4px;
+      background: #f3f4f6;
+      color: #050505;
+      font-weight: 950;
+      font-size: 16px;
+      line-height: 1.25;
+      box-shadow: 0 2px 5px rgba(0,0,0,.14);
+    }
+
+    .waiting-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+      gap: 8px;
+      padding: 12px 4px 14px;
+      border-top: 0;
+      background: transparent;
+    }
+
+    .player-card {
+      min-height: 82px;
+      border-radius: 5px;
+      padding: 8px 5px;
+      display: grid;
+      align-content: center;
+      gap: 5px;
+      color: #fff;
+      box-shadow: var(--shadow);
+      text-align: center;
+      user-select: none;
+      border: 2px solid transparent;
+      overflow: hidden;
+    }
+
+    .player-card.selected { border-color: rgba(255,255,255,.95); box-shadow: 0 0 0 3px #1f9cff, 0 8px 18px rgba(0,0,0,.28); transform: translateY(-2px); z-index: 2; }
+    .player-card.assigned { box-shadow: 0 0 0 3px #21c45a, 0 8px 18px rgba(0,0,0,.24); transform: translateY(-2px); }
+    .player-card.male:not(.guest) { background: #1268d6; }
+    .player-card.female:not(.guest) { background: #f48fb1; color: #111; }
+    .player-card.guest.male { background: #aee9ff; color: #102a3d; }
+    .player-card.guest.female { background: #ffd6e7; color: #7a1238; }
+    .player-card.excluded {
+      background: #ffe84c;
+      color: #2a2a11;
+      border: 5px solid #f5ae00 !important;
+      box-shadow: 0 0 0 2px #fff7bc, 0 8px 18px rgba(166, 113, 0, .35);
+    }
+
+    .player-name {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      font-weight: 900;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: normal;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      line-height: 1.16;
+      font-size: clamp(12px, 3.2vw, 15px);
+    }
+
+    .waiting-strip .player-name {
+      font-size: clamp(12px, 3.1vw, 14px);
+      line-height: 1.14;
+    }
+
+    .player-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      min-height: 17px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .22);
+      color: inherit;
+    }
+
+    .gender-chip { display: none; }
+
+    .meta-chip.dark {
+      background: rgba(0, 0, 0, .16);
+    }
+
+    .selected-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .raise-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .raise-row {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid #d9dee5;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #ffffff, #f7faff);
+      box-shadow: 0 8px 20px rgba(31, 65, 83, .08);
+    }
+
+    .raise-row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .raise-court-title {
+      color: #102a3d;
+      font-size: 18px;
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+
+    .raise-names {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      min-height: 34px;
+    }
+
+    .raise-name-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: #12354a;
+      background: #eef5ff;
+      border: 1px solid #d7e5f8;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+
+    .raise-targets {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      padding-top: 2px;
+    }
+
+    @media (max-width: 560px) {
+      .court-cell { padding: 4px; }
+      .player-card { min-height: 84px; padding: 7px 4px; gap: 4px; }
+      .meta-chip { min-height: 16px; padding: 1px 3px; font-size: 10.5px; }
+    }
+
+    .player-card.male.d .meta-chip,
+    .player-card.male.e .meta-chip,
+    .player-card.female.d .meta-chip,
+    .player-card.female.e .meta-chip,
+    .player-card.guest .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      min-height: 17px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .22);
+      color: inherit;
+    }
+
+    .gender-chip { display: none; }
+
+    .guest-badge {
+      display: inline-block;
+      margin-left: 2px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(0,0,0,.16);
+      font-size: 11px;
+    }
+
+    .play-title {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #d8dce0;
+      font-size: 18px;
+    }
+
+    .active-grid {
+      display: grid;
+      grid-template-columns: 96px repeat(4, minmax(0, 1fr));
+      width: 100%;
+      min-width: 0;
+      border-left: 1px solid var(--line);
+      border-top: 1px solid var(--line);
+    }
+
+    .member-toolbar {
+      display: grid;
+      grid-template-columns: auto auto auto auto 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 8px;
+      border-bottom: 1px solid #e2e5e8;
+      background: #fff;
+      z-index: 8;
+    }
+
+    .member-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      border-bottom: 1px solid #e2e5e8;
+      background: #f7f9fb;
+    }
+
+    .member-tab-btn {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid #cfd6de;
+      border-radius: 6px;
+      background: #fff;
+      color: #39424e;
+      font-weight: 900;
+    }
+
+    .member-tab-btn.active {
+      background: #2f74d0;
+      border-color: #2f74d0;
+      color: #fff;
+    }
+
+    .search {
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      border: 0;
+      border-bottom: 1px solid #77808a;
+      padding: 0 10px;
+      outline: 0;
+      font-size: 18px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    th, td {
+      height: 52px;
+      border-bottom: 1px solid #e0e3e7;
+      padding: 8px 10px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    th {
+      color: #555;
+      font-weight: 800;
+      background: #fff;
+      font-size: 16px;
+    }
+
+    td.name {
+      text-align: left;
+      font-weight: 800;
+    }
+
+    .member-name-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .member-name-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-wait { color: #3f4750; }
+    .member-muted { color: #3f4750; }
+    .member-normal-name { color: #3f4750 !important; }
+    .member-guest-name { color: #1769d8 !important; }
+    body.theme-dark .member-wait,
+    body.theme-dark .member-muted,
+    body.theme-dark .member-normal-name { color: #d7dee8 !important; }
+    body.theme-dark .member-guest-name { color: #69a7ff !important; }
+    tr.member-no-attendance td { background: #fff4b8; }
+    .member-admin-name { color: #d92525 !important; }
+    .admin-badge {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #ffe6e6;
+      color: #d92525;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .status-toggle {
+      width: 46px;
+      height: 40px;
+      border-radius: 5px;
+      background: transparent;
+      color: #5f7f98;
+      font-size: 25px;
+      font-weight: 950;
+      line-height: 1;
+    }
+    .status-toggle.play { color: #e05275; }
+    .status-toggle.off { color: #aeb4ba; }
+    .status-toggle:hover { background: #eef1f4; }
+
+    .manage-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 5px;
+      background: transparent;
+      color: #4b535b;
+      font-size: 21px;
+      font-weight: 900;
+    }
+
+    .manage-btn:hover {
+      background: #eef1f4;
+      color: #252b31;
+    }
+
+    .admin-empty {
+      padding: 48px 18px;
+      color: #666;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    .stats {
+      padding: 8px 4px 20px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-box {
+      border: 1px solid #d9dee3;
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .stat-value {
+      display: block;
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: 900;
+      color: #17293a;
+    }
+
+    .stats-filter {
+      display: grid;
+      grid-template-columns: 110px 1fr 1fr;
+      border: 1px solid #d3d7dc;
+      background: #fff;
+      margin-bottom: 8px;
+    }
+
+    .stats-filter-label {
+      display: grid;
+      place-items: center;
+      background: #ededed;
+      border-right: 1px solid #d3d7dc;
+      font-weight: 800;
+    }
+
+    .stats-filter input {
+      min-width: 0;
+      height: 56px;
+      border: 0;
+      border-bottom: 1px solid #777;
+      margin: 0 12px;
+      font-size: 18px;
+      outline: 0;
+    }
+
+    .stats-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 0 16px 8px;
+      flex-wrap: wrap;
+    }
+
+    .stats-note {
+      padding: 0 8px 8px;
+      color: #39434e;
+      font-size: 14px;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      height: 36px;
+      font-size: 18px;
+      padding: 5px 8px;
+    }
+
+    .stats-table th {
+      position: static;
+      background: #eeeeee;
+      color: #222;
+      font-weight: 500;
+    }
+
+    .bottom-nav {
+      min-height: calc(72px + env(safe-area-inset-bottom, 0px));
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-top: 1px solid rgba(31, 65, 83, .12);
+      background: rgba(255,255,255,.94);
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      box-shadow: 0 -10px 26px rgba(31, 65, 83, .08);
+      backdrop-filter: blur(10px);
+    }
+
+    .nav-btn {
+      color: #273947;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      font-size: 12px;
+      min-width: 0;
+      padding: 6px 2px;
+      font-weight: 800;
+    }
+
+    .nav-btn span:last-child {
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-btn.active {
+      color: #0f6a4a;
+      background: linear-gradient(180deg, rgba(15,143,95,.12), rgba(20,86,200,.06));
+    }
+
+    .nav-icon { font-size: 24px; line-height: 1; font-weight: 900; }
+
+    .nav-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+    }
+
+    .grade-match {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grade-match-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 2px 2px 0;
+    }
+
+    .grade-match-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .grade-match-note {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grade-match-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .grade-match-row {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 74px;
+      padding: 10px;
+      border: 1px solid rgba(31, 65, 83, .14);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 6px 16px rgba(31, 65, 83, .06);
+    }
+
+    .grade-match-badge {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      color: #fff;
+      background: #1268d6;
+      font-size: 19px;
+      font-weight: 1000;
+    }
+
+    .grade-match-people {
+      min-width: 0;
+      color: #304150;
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.45;
+    }
+
+    .grade-match-count { color: var(--muted); font-size: 12px; }
+    .grade-match-btn { min-width: 72px; }
+    .grade-match-empty { color: var(--muted); font-size: 13px; }
+
+    body.theme-dark .grade-match-row { background: #101820; border-color: #354152; }
+    body.theme-dark .grade-match-people { color: #e6edf5; }
+
+    @media (max-width: 390px) {
+      .grade-match-row { grid-template-columns: 42px minmax(0, 1fr); }
+      .grade-match-badge { width: 42px; height: 42px; }
+      .grade-match-btn { grid-column: 2; justify-self: start; }
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      align-items: center;
+      background: rgba(0, 0, 0, .48);
+    }
+
+    .modal {
+      width: min(520px, calc(100vw - 10px));
+      max-height: calc(100vh - 24px);
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 22px 70px rgba(0,0,0,.34);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .modal-head {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #e4e4e4;
+      font-weight: 800;
+    }
+
+    .modal-close {
+      background: transparent;
+      color: #555;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .modal-body {
+      padding: 18px 16px;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 12px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 7px;
+      color: #222;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      height: 42px;
+      border: 0;
+      border-bottom: 1px solid #777;
+      padding: 0 8px;
+      background: #fff;
+      outline: 0;
+      font-size: 20px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 16px 18px;
+    }
+
+    .action-btn {
+      min-width: 96px;
+      min-height: 38px;
+      border-radius: 4px;
+      background: #fff;
+      color: #333;
+      font-weight: 800;
+    }
+
+    .action-btn.confirm {
+      color: #fff;
+      background: #4053b8;
+    }
+
+    .action-btn.admin-back {
+      color: #fff;
+      background: linear-gradient(135deg, #0f8f5f, #1456c8);
+      border-color: transparent;
+      box-shadow: 0 8px 18px rgba(20, 86, 200, 0.22);
+    }
+
+    .admin-menu {
+      display: grid;
+      gap: 10px;
+    }
+
+    .admin-menu-btn {
+      width: 100%;
+      min-height: 52px;
+      border: 1px solid #d4d9df;
+      border-radius: 6px;
+      background: #fff;
+      color: #1f2b36;
+      font-weight: 900;
+      text-align: left;
+      padding: 0 14px;
+      box-shadow: 0 2px 7px rgba(0,0,0,.08);
+    }
+
+    .admin-menu-btn.members-menu {
+      background: var(--yellow);
+      border-color: #e0cf00;
+      color: #111;
+    }
+
+    .admin-menu-btn.exit-all-menu {
+      background: #1268d6;
+      border-color: #0c55b4;
+      color: #fff;
+    }
+
+    .dues-month {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .dues-month input {
+      height: 40px;
+      border: 1px solid #cfd5dc;
+      border-radius: 4px;
+      padding: 0 10px;
+    }
+
+    .dues-list {
+      max-height: min(60vh, 560px);
+      overflow: auto;
+      border: 1px solid #dde2e7;
+    }
+
+    .modal-table-scroll {
+      max-height: min(60vh, 560px);
+      overflow: auto;
+      border: 1px solid #dde2e7;
+    }
+
+    .modal-table-scroll table {
+      min-width: 480px;
+    }
+
+    .year-dues-table {
+      min-width: 980px !important;
+    }
+
+    .year-dues-table th,
+    .year-dues-table td {
+      min-width: 58px;
+      text-align: center;
+    }
+
+    .year-dues-table th:nth-child(2),
+    .year-dues-table td:nth-child(2) {
+      min-width: 92px;
+      text-align: left;
+    }
+
+    .year-dues-table input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+    }
+
+    .finance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .finance-grid .field input,
+    .finance-grid .field select {
+      height: 38px;
+      font-size: 16px;
+    }
+
+    .finance-summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin: 10px 0 12px;
+    }
+
+    .finance-summary div {
+      border: 1px solid #d9dee3;
+      border-radius: 6px;
+      padding: 10px;
+      background: #f8fafc;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .finance-summary strong {
+      display: block;
+      margin-top: 5px;
+      color: #253142;
+      font-size: 18px;
+    }
+
+    .excel-copy {
+      width: 100%;
+      min-height: 150px;
+      border: 1px solid #ccd3da;
+      border-radius: 5px;
+      padding: 10px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .modal-table-scroll thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .dues-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 7px 10px;
+      border-bottom: 1px solid #edf0f3;
+    }
+
+    .dues-row:last-child { border-bottom: 0; }
+
+    .dues-row label {
+      font-weight: 800;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dues-row input {
+      width: 22px;
+      height: 22px;
+    }
+
+    .court-picker {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 26px;
+      padding: 22px 20px;
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+    }
+
+    .court-btn {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      color: #111;
+      background: #fff;
+      box-shadow: 0 10px 18px rgba(0,0,0,.14);
+      font-size: 24px;
+    }
+
+
+    .game-history-table {
+      width: 100%;
+      min-width: 0;
+      border-collapse: collapse;
+      margin-top: 14px;
+      border: 1px solid #d5d5d5;
+      background: #fff;
+    }
+
+    .game-history-table th,
+    .game-history-table td {
+      height: 36px;
+      border: 1px solid #d5d5d5;
+      padding: 5px 8px;
+      text-align: center;
+      font-size: 18px;
+    }
+
+    .game-history-table th {
+      background: #eee;
+      font-weight: 500;
+    }
+
+    .game-history-empty {
+      padding: 18px 8px;
+      color: #777;
+      text-align: center;
+      border: 1px solid #d5d5d5;
+      margin-top: 14px;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 96px;
+      z-index: 80;
+      transform: translateX(-50%);
+      width: min(360px, calc(100vw - 40px));
+      padding: 14px 18px;
+      border-radius: 4px;
+      color: #fff;
+      background: #1abc12;
+      text-align: center;
+      box-shadow: var(--shadow);
+      font-weight: 800;
+    }
+
+    @media (max-width: 520px) {
+      .login-card {
+      position: relative;
+      padding: 34px 38px 40px;
+      border: 1px solid rgba(32, 83, 64, .12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: 0 24px 70px rgba(28, 67, 91, .16);
+      text-align: left;
+      backdrop-filter: blur(12px);
+    }
+
+    @media (max-width: 390px) {
+      .login-card {
+      position: relative;
+      padding: 34px 38px 40px;
+      border: 1px solid rgba(32, 83, 64, .12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: 0 24px 70px rgba(28, 67, 91, .16);
+      text-align: left;
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body>
+  <section id="loginPage" class="login-page">
+    <div class="login-shell">
+      <div class="brand-mark" aria-hidden="true">JD</div>
+      <h1 class="brand-title">주둥아리 라켓</h1>
+      <p class="brand-subtitle">MATCHING · CLUB · RECORD</p>
+      <div class="login-card">
+        <label class="login-label" for="loginName">이름으로 입장하기</label>
+        <input id="loginName" class="login-input" type="text" placeholder="이름을 입력하세요" autocomplete="name">
+        <button id="memberLoginBtn" class="primary-btn">입장하기 →</button>
+        <div class="divider">또는</div>
+        <button id="guestLoginBtn" class="guest-btn">👤 게스트 입장</button>
+        <div class="admin-link">
+          <button id="loginAdminBtn" class="icon-link" title="운영자 설정">⚙ 운영자</button>
+        </div>
+      </div>
+      <div id="registeredCount" class="member-count">등록 회원 확인 중</div>
+    </div>
+  </section>
+
+  <section id="appPage" class="app hidden">
+    <header class="topbar">
+      <div id="topTitle" class="topbar-title">게임현황</div>
+      <div class="top-actions">
+        <button id="syncBtn" class="mini-btn" title="새로고침">↻</button>
+        <button id="adminBtn" class="mini-btn" title="운영자 설정">⚙</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section id="waitingView" class="view">
+        <div class="match-toolbar">
+          <div class="toolbar-row toolbar-row-top">
+            <button id="startMatchBtn" class="mini-btn start-game toolbar-start">▲ 올리기</button>
+            <button id="memberManageBtn" class="mini-btn member-manage-btn" type="button">회원관리</button>
+            <button id="kakaoJoinBtn" class="mini-btn kakao-join-btn">💬 카톡입장</button>
+          </div>
+          <div class="toolbar-row toolbar-row-match">
+            <button id="filterGenderBtn" class="mini-btn">남복여복</button>
+            <button id="filterMixedBtn" class="mini-btn">혼복</button>
+            <button id="filterGradeBtn" class="mini-btn">급수 매칭</button>
+          </div>
+          <div class="toolbar-row toolbar-row-actions">
+            <button id="partnerPairsBtn" class="mini-btn">파트너고정</button>
+            <button id="restBtn" class="mini-btn">Ⅱ 휴식하기</button>
+            <button id="returnBtn" class="mini-btn">▶ 복귀하기</button>
+          </div>
+        </div>        <div class="court-grid" id="courtGrid"></div>
+        <div class="waiting-strip" id="waitingList"></div>
+      </section>
+
+      <section id="playingView" class="view hidden">
+        <div class="play-title">게임 진행 현황</div>
+        <div id="activeGames" class="active-grid"></div>
+      </section>
+
+      <section id="gradeMatchView" class="view hidden">
+        <div class="grade-match">
+          <div class="grade-match-head">
+            <div>
+              <h2 class="grade-match-title">급수 매칭</h2>
+              <p class="grade-match-note">같은 급수 대기자 4명을 우선 배정합니다.</p>
+            </div>
+            <button id="gradeMatchAutoBtn" class="toolbar-btn" type="button">자동 배정</button>
+          </div>
+          <div id="gradeMatchList" class="grade-match-list"></div>
+        </div>
+      </section>
+
+      <section id="membersView" class="view hidden">
+        <div id="memberAdminLocked" class="admin-empty hidden">
+          회원목록은 운영진만 확인할 수 있습니다.<br>
+          메인 화면의 설정 아이콘에서 Firebase 운영자로 로그인하세요.
+        </div>
+        <div id="memberAdminPanel" class="hidden">
+          <div class="member-tabs">
+            <button id="memberTabBtn" class="member-tab-btn active" type="button">회원</button>
+            <button id="guestTabBtn" class="member-tab-btn" type="button">게스트 회원</button>
+          </div>
+          <div class="member-toolbar">
+            <button id="addMemberBtn" class="toolbar-btn">+ 추가</button>
+            <button id="exportBtn" class="toolbar-btn">상세 다운로드</button>
+            <button id="importBtn" class="toolbar-btn">상세 업로드</button>
+            <button id="seedBtn" class="toolbar-btn">⇧</button>
+            <button id="memberAdminMenuBtn" class="toolbar-btn admin-menu-toolbar">운영진 메뉴</button>
+            <input id="memberImportFile" class="hidden" type="file" accept=".csv,text/csv">
+            <input id="memberSearch" class="search" type="search" placeholder="검색">
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>이름 / 상태</th>
+                  <th>급수</th>
+                  <th>성별</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody id="memberRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="statsView" class="view hidden">
+        <div class="stats">
+          <div class="stats-filter">
+            <div class="stats-filter-label">기간</div>
+            <input id="statStartDate" type="date">
+            <input id="statEndDate" type="date">
+          </div>
+          <div class="stats-actions">
+            <button class="toolbar-btn" id="statPersonalBtn">♜ 개인별 보기</button>
+            <button class="toolbar-btn" id="statGameBtn">▶ 게임별 보기</button>
+            <button class="toolbar-btn" id="statDailyBtn">▣ 일자별 보기</button>
+            <button class="toolbar-btn admin-menu-toolbar" id="statsAdminMenuBtn">운영진 메뉴</button>
+          </div>
+          <div class="stats-note">ⓘ 이름 또는 나이 클릭시 상세내역을 확인할 수 있습니다.</div>
+          <div class="table-scroll">
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>순위</th>
+                  <th>이름</th>
+                  <th>나이</th>
+                  <th>성별</th>
+                  <th>급수</th>
+                  <th>출석</th>
+                  <th>게임</th>
+                  <th>평균</th>
+                  <th>오늘</th>
+                </tr>
+              </thead>
+              <tbody id="statsRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="waiting"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span>게임현황</span></button>
+      <button id="logoutBtn" class="nav-btn"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7M6 10v10h12V10"/></svg></span><span>퇴장하기</span></button>
+    </nav>
+  </section>
+
+  <div id="modalRoot" class="hidden"></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script>
+    const DB_URL = "https://badminton-89c25-default-rtdb.asia-southeast1.firebasedatabase.app";
+    const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
+    const ADMIN_UID = "fIbEdqw2UzWxDrOLWkilOb3v5ha2";
+    const LOCAL_ADMIN_ID = "judoong";
+    const LOCAL_ADMIN_PASSWORD = "1111";
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyBS8kSC1PfMQJjUMJfC6ZNZv51uBwA4NyE",
+      authDomain: "badminton-89c25.firebaseapp.com",
+      databaseURL: DB_URL,
+      projectId: "badminton-89c25",
+      storageBucket: "badminton-89c25.firebasestorage.app",
+      messagingSenderId: "66208594824",
+      appId: "1:66208594824:web:4e54784af79a673dc5983d"
+    };
+    const DEFAULT_MEMBERS = [
+      ["김성합","D","남","WAIT"],["김지영","C","여","DEFAULT"],["서원상","B","남","DEFAULT"],["은건무","A","남","DEFAULT"],
+      ["이미경","B","여","DEFAULT"],["이재웅","C","남","DEFAULT"],["홍성용","C","남","DEFAULT"],["강효정","D","여","DEFAULT"],
+      ["기명규","D","남","DEFAULT"],["김기천","A","남","DEFAULT"],["김나은","B","여","DEFAULT"],["김동현","A","남","DEFAULT"],
+      ["김민준","C","남","DEFAULT"],["김선우","C","남","DEFAULT"],["김성진","B","남","DEFAULT"],["김연정","C","여","DEFAULT"],
+      ["김영진","C","남","DEFAULT"],["김유미","B","여","DEFAULT"],["김은주","B","여","DEFAULT"],["김은혜","B","여","DEFAULT"],
+      ["김인철","C","남","DEFAULT"],["나상일","C","남","DEFAULT"],["남궁난","C","남","DEFAULT"],["마경준","C","남","DEFAULT"],
+      ["민병원","C","남","DEFAULT"],["박미영","C","여","DEFAULT"],["박은미","C","여","DEFAULT"],["박인호","C","남","DEFAULT"],
+      ["박재범","C","남","DEFAULT"],["박찬호","C","남","DEFAULT"],["방문주","B","남","DEFAULT"],["서정민","B","남","DEFAULT"],
+      ["심대현","A","남","DEFAULT"],["심상아","C","여","DEFAULT"],["이광호","C","남","DEFAULT"],["이동우","C","남","DEFAULT"],
+      ["이미연","A","여","DEFAULT"],["이보영","D","여","DEFAULT"],["이상실","C","여","DEFAULT"],["이성원","C","남","DEFAULT"],
+      ["이주원","C","남","DEFAULT"],["이창훈","C","남","DEFAULT"],["이철형","C","남","DEFAULT"],["임은실","C","여","DEFAULT"],
+      ["정성관","C","남","DEFAULT"],["정연재","C","남","DEFAULT"],["정주호","C","남","DEFAULT"],["조병우","C","남","DEFAULT"],
+      ["지예원","C","여","DEFAULT"],["지원준","C","남","DEFAULT"],["진달래","C","여","DEFAULT"],["차영권","B","남","DEFAULT"],
+      ["최경환","C","남","DEFAULT"],["최미라","A","여","DEFAULT"],["코치님","S","여","DEFAULT"],["한민규","B","남","DEFAULT"],
+      ["황찬수","B","남","DEFAULT"],["강경화","D","여","DEFAULT"],["권병","B","남","DEFAULT"],["김근노","A","남","DEFAULT"],
+      ["김동민","D","남","DEFAULT"],["김성대","B","남","DEFAULT"],["김소연","C","남","DEFAULT"],["김소현","C","여","DEFAULT"],
+      ["김지민","E","여","DEFAULT"],["라영선","A","남","DEFAULT"],["박일남","C","남","DEFAULT"],["방문주80","D","남","DEFAULT"],
+      ["배재열","C","남","DEFAULT"],["손재명","D","남","DEFAULT"],["신익수","A","남","DEFAULT"],["안세영","S","여","DEFAULT"],
+      ["오동환","B","남","DEFAULT"],["원현식","D","남","DEFAULT"],["이경미","C","여","DEFAULT"],["이경순","A","여","DEFAULT"],
+      ["이계훈","D","남","DEFAULT"],["이상민","D","남","DEFAULT"],["이선규","D","남","DEFAULT"],["이정복","A","남","DEFAULT"],
+      ["장만규","A","남","DEFAULT"],["장윤우","D","남","DEFAULT"],["장인준","D","남","DEFAULT"],["장효민","B","남","DEFAULT"],
+      ["전병용","D","남","DEFAULT"],["조성호","C","남","DEFAULT"],["최욱","A","남","DEFAULT"]
+    ];
+
+    const state = {
+      members: {},
+      games: {},
+      gamesLoadedAll: false,
+      partnerPairs: {},
+      selected: new Set(),
+      courtAssignments: {},
+      currentUser: null,
+      authUser: null,
+      isAdmin: sessionStorage.getItem("clubAdmin") === "1",
+      adminUid: ADMIN_UID,
+      memberTab: "member",
+      view: "waiting",
+      unsubscribeTimer: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const normalizeName = (name) => String(name || "").replace(/\s+/g, " ").trim();
+    const memberId = (name) => normalizeName(name).replace(/[.#$\[\]\/]/g, "_");
+    const now = () => new Date().toISOString();
+    const GAME_COURTS = [1, 2, 3, 4, 5];
+    const WAIT_COURTS = [6, 7, 8, 9, 10];
+    const ALL_COURTS = [...GAME_COURTS, ...WAIT_COURTS];
+    const isGameCourt = (court) => GAME_COURTS.includes(Number(court));
+
+    function hasFirebaseConfig() {
+      return Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+    }
+
+    function firebaseApp() {
+      if (!hasFirebaseConfig()) {
+        throw new Error("Firebase 설정값(apiKey/appId 등)을 먼저 입력하세요.");
+      }
+      if (!window.firebase) {
+        throw new Error("Firebase SDK를 불러오지 못했습니다.");
+      }
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      return firebase.app();
+    }
+
+    function authService() {
+      firebaseApp();
+      if (!firebase.auth) throw new Error("Firebase Auth SDK를 불러오지 못했습니다.");
+      return firebase.auth();
+    }
+
+    async function ensureAuthUser() {
+      if (!hasFirebaseConfig() || !window.firebase?.auth) return null;
+      const auth = authService();
+      if (auth.currentUser) {
+        state.authUser = auth.currentUser;
+        return auth.currentUser;
+      }
+      const credential = await auth.signInAnonymously();
+      state.authUser = credential.user;
+      return credential.user;
+    }
+
+    async function ensureAnonymousUser() {
+      const auth = authService();
+      if (auth.currentUser?.isAnonymous) {
+        state.authUser = auth.currentUser;
+        return auth.currentUser;
+      }
+      if (auth.currentUser) await auth.signOut();
+      const credential = await auth.signInAnonymously();
+      state.authUser = credential.user;
+      return credential.user;
+    }
+
+    async function authToken() {
+      const user = await ensureAuthUser();
+      return user ? user.getIdToken() : "";
+    }
+
+    async function db(path, options = {}) {
+      const cleanPath = path.replace(/^\/+/, "");
+      const params = new URLSearchParams(options.query || {});
+      const token = await authToken().catch((error) => {
+        console.warn("auth token unavailable", error);
+        return "";
+      });
+      if (token) params.set("auth", token);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const { query: _query, ...fetchOptions } = options;
+      const res = await fetch(`${DB_URL}/${cleanPath}.json${query}`, {
+        ...fetchOptions,
+        headers: { "Content-Type": "application/json", ...(fetchOptions.headers || {}) }
+      });
+      if (!res.ok) throw new Error(`DB 오류: ${res.status}`);
+      return res.json();
+    }
+
+    const dbGet = (path) => db(path);
+    const dbQuery = (path, query) => db(path, { query });
+    const dbPut = (path, data) => db(path, { method: "PUT", body: JSON.stringify(data) });
+    const dbPatch = (path, data) => db(path, { method: "PATCH", body: JSON.stringify(data) });
+    const dbDelete = (path) => db(path, { method: "DELETE" });
+
+    function normalizeMemberRecord(key, value) {
+      if (!value || typeof value !== "object") return null;
+      const name = normalizeName(value.name || key);
+      if (!name || name === "undefined") return null;
+      const grade = String(value.grade || value.level || "D").trim().toUpperCase();
+      const isGuest = Boolean(value.isGuest || value.guest || key.startsWith("guest_") || grade === "G");
+      return {
+        ...value,
+        id: key,
+        name,
+        grade,
+        level: value.level || grade,
+        gender: String(value.gender || "남").trim(),
+        birthYear: value.birthYear || value.birth || "",
+        status: ["WAIT", "PLAY", "DEFAULT", "EXCLUDED"].includes(value.status) ? value.status : "DEFAULT",
+        isGuest,
+        guest: isGuest,
+        admin: Boolean(value.admin || value.role === "admin" || value.isAdmin),
+        finance: Boolean(value.finance || value.role === "finance" || value.financeManager),
+        games: Number(value.games || value.gameCount || 0),
+        updatedAt: value.updatedAt || now()
+      };
+    }
+
+    function normalizeMembers(raw) {
+      const normalized = {};
+      Object.entries(raw || {}).forEach(([key, value]) => {
+        const member = normalizeMemberRecord(key, value);
+        if (member) normalized[key] = member;
+      });
+      return normalized;
+    }
+
+    async function loadTodayGames() {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      try {
+        let games = await dbQuery("games", {
+          orderBy: JSON.stringify("startedAt"),
+          startAt: JSON.stringify(todayKey),
+          endAt: JSON.stringify(`${todayKey}\uf8ff`)
+        });
+        // Keep active games visible even when a game crosses the UTC date boundary.
+        const allGames = await dbGet("games").catch(() => ({})) || {};
+        Object.entries(allGames).forEach(([id, game]) => {
+          if (game?.status === "PLAY") (games || (games = {}))[id] = game;
+        });
+        return games || {};
+      } catch (error) {
+        console.warn("today games query failed", error);
+        return {};
+      }
+    }
+
+    async function cleanupStaleGames() {
+      const allGames = await dbGet("games").catch(() => ({})) || {};
+      const cutoff = Date.now() - 8 * 60 * 60 * 1000;
+      const updates = {};
+      Object.entries(allGames).forEach(([gameId, game]) => {
+        if (!game || game.status !== "PLAY") return;
+        const startedMs = new Date(game.startedAt || 0).getTime();
+        if (!startedMs || startedMs > cutoff) return;
+        updates[`games/${gameId}/status`] = "DONE";
+        updates[`games/${gameId}/endedAt`] = game.endedAt || now();
+        updates[`games/${gameId}/autoEnded`] = true;
+        (game.players || []).forEach((id) => {
+          if (state.members[id]?.status === "PLAY") {
+            updates[`members/${id}/status`] = "WAIT";
+            updates[`members/${id}/updatedAt`] = now();
+          }
+        });
+      });
+      if (Object.keys(updates).length) {
+        await dbPatch("/", updates);
+        toast("오래된 진행중 게임을 자동 정리했습니다.");
+      }
+    }
+
+    function toMember(row, index) {
+      const [name, grade, gender, status] = row;
+      return {
+        id: memberId(`${name}_${index}`),
+        name: normalizeName(name),
+        grade: String(grade || "D").trim().toUpperCase(),
+        gender: String(gender || "남").trim(),
+        status: status === "WAIT" ? "WAIT" : "DEFAULT",
+        isGuest: false,
+        games: 0,
+        createdAt: now(),
+        updatedAt: now()
+      };
+    }
+
+    async function seedMembers(force = false) {
+      const existing = await dbGet("members").catch(() => undefined);
+      if (existing === undefined && !force) throw new Error("members DB read failed");
+      if (existing && !force) return existing;
+      const payload = {};
+      DEFAULT_MEMBERS.map(toMember).forEach((member) => { payload[member.id] = member; });
+      await dbPut("members", payload);
+      await dbPatch("meta", { seededAt: now(), clubName: "주둥아리 배드민턴" });
+      return payload;
+    }
+
+    async function restoreDefaultMembers() {
+      const existingRaw = await dbGet("members");
+      const existing = normalizeMembers(existingRaw || {});
+      const existingNames = new Set(Object.values(existing).map((member) => normalizeName(member.name)));
+      const updates = {};
+      DEFAULT_MEMBERS.map(toMember).forEach((member) => {
+        if (!existingNames.has(normalizeName(member.name))) {
+          updates[`members/${member.id}`] = member;
+        }
+      });
+      if (!Object.keys(updates).length) {
+        toast("복원할 누락 회원이 없습니다.");
+        return;
+      }
+      await dbPatch("/", updates);
+      await loadData();
+      toast(`${Object.keys(updates).length}명 복원했습니다.`);
+    }
+
+    async function loadData(options = {}) {
+      const { gamesMode = "today" } = options;
+      let members;
+      try {
+        members = await dbGet("members");
+      } catch (error) {
+        console.error(error);
+        toast("DB 연결을 확인하세요.");
+        return false;
+      }
+      if (members === null) members = await seedMembers(false);
+      state.members = normalizeMembers(members || {});
+      if (gamesMode === "all") {
+        state.games = await dbGet("games").catch(() => ({})) || {};
+        state.gamesLoadedAll = true;
+      } else if (gamesMode === "today") {
+        state.games = await loadTodayGames();
+        state.gamesLoadedAll = false;
+      }
+      state.partnerPairs = await dbGet("partnerPairs").catch(() => ({})) || {};
+      renderAll();
+      return true;
+    }
+
+    async function refreshData() {
+      const ok = await loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
+      if (ok) toast("새로고침 완료");
+    }
+
+    async function loadStatsGamesIfNeeded() {
+      if (state.gamesLoadedAll) return;
+      state.games = await dbGet("games").catch(() => ({})) || {};
+      state.gamesLoadedAll = true;
+      renderStats();
+    }
+
+    function memberList() {
+      return Object.values(state.members || {}).filter((m) => m && m.name).sort((a, b) => {
+        const statusScore = (m) => m.status === "WAIT" ? 0 : m.status === "PLAY" ? 1 : 2;
+        return statusScore(a) - statusScore(b) || String(a.name).localeCompare(String(b.name), "ko");
+      });
+    }
+
+    function memberManageList() {
+      const groupScore = (member) => member.admin ? 0 : member.isGuest ? 2 : 1;
+      return Object.values(state.members || {}).filter((m) => m && m.name).sort((a, b) => {
+        return groupScore(a) - groupScore(b) || a.name.localeCompare(b.name, "ko");
+      });
+    }
+
+    function findMemberByName(name) {
+      const clean = normalizeName(name);
+      return memberList().find((m) => normalizeName(m.name) === clean);
+    }
+
+    async function enterAsMember() {
+      const name = normalizeName($("loginName").value);
+      if (!name) return toast("이름을 입력하세요.");
+      const member = findMemberByName(name);
+      if (!member) {
+        openGuestModal(name);
+        return;
+      }
+      state.currentUser = member;
+      sessionStorage.setItem("clubUserId", member.id);
+      if (member.admin) {
+        state.isAdmin = true;
+        sessionStorage.setItem("clubAdmin", "1");
+      }
+      await dbPatch(`members/${member.id}`, { status: "WAIT", updatedAt: now() });
+      await loadData();
+      showApp();
+      toast(`${member.name}님 입장했습니다.`);
+    }
+
+    async function enterAsGuest(guestInfo = {}) {
+      const name = normalizeName(guestInfo.name || $("loginName").value);
+      if (!name) return toast("게스트 이름이 필요합니다.");
+      const id = `guest_${memberId(name)}_${Date.now()}`;
+      const guest = {
+        id,
+        name,
+        grade: String(guestInfo.grade || "D").toUpperCase(),
+        level: String(guestInfo.grade || "D").toUpperCase(),
+        gender: guestInfo.gender || "남",
+        birthYear: guestInfo.birthYear || "",
+        status: "WAIT",
+        isGuest: true,
+        guest: true,
+        games: 0,
+        createdAt: now(), updatedAt: now()
+      };
+      state.currentUser = guest;
+      sessionStorage.setItem("clubUserId", id);
+      await dbPut(`members/${id}`, guest);
+      await loadData();
+      showApp();
+      toast(`${name}님 게스트로 입장했습니다.`);
+    }
+
+    async function logout() {
+      const userId = sessionStorage.getItem("clubUserId");
+      if (userId && state.members[userId]) {
+        await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
+      }
+      sessionStorage.removeItem("clubUserId");
+      sessionStorage.removeItem("clubAdmin");
+      state.isAdmin = false;
+      state.currentUser = null;
+      state.selected.clear();
+      await loadData();
+      $("appPage").classList.add("hidden");
+      $("loginPage").classList.remove("hidden");
+      toast("회원이 정상적으로 퇴장 되었습니다.");
+    }
+
+    function showApp() {
+      $("loginPage").classList.add("hidden");
+      $("appPage").classList.remove("hidden");
+      setView("waiting");
+    }
+
+    function setView(view) {
+      if ((view === "stats" || view === "members") && !state.isAdmin) {
+        toast("운영진만 확인할 수 있습니다.");
+        view = "waiting";
+      }
+      state.view = view;
+      ["waiting", "playing", "gradeMatch", "members", "stats"].forEach((name) => {
+        $(`${name}View`).classList.toggle("hidden", name !== view);
+      });
+      document.querySelectorAll(".nav-btn[data-view]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.view === view);
+      });
+      $("topTitle").textContent = {
+        waiting: "게임현황",
+        playing: "게임중",
+        gradeMatch: "급수 매칭",
+        members: "회원관리",
+        stats: "클럽통계"
+      }[view];
+      renderAll();
+      if (view === "stats") loadStatsGamesIfNeeded();
+    }
+
+    function playerClass(member) {
+      return [
+        "player-card",
+        member.gender === "여" ? "female" : "male",
+        String(member.grade || "D").toLowerCase(),
+        member.isGuest ? "guest" : "",
+        member.status === "EXCLUDED" ? "excluded" : "",
+        state.selected.has(member.id) ? "selected" : ""
+      ].join(" ");
+    }
+
+    function partnerIdFor(memberId) {
+      const pair = Object.values(state.partnerPairs || {}).find((item) => item && (item.a === memberId || item.b === memberId));
+      if (!pair) return "";
+      return pair.a === memberId ? pair.b : pair.a;
+    }
+
+    function playablePartnerIds(memberId) {
+      const ids = [memberId];
+      const partnerId = partnerIdFor(memberId);
+      const assigned = assignedPlayerIds();
+      const partner = state.members[partnerId];
+      if (partner && partner.status === "WAIT" && !assigned.has(partnerId)) ids.push(partnerId);
+      return ids;
+    }
+
+    function todayGameCount(memberId) {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      return Object.values(state.games || {}).filter((game) => {
+        const playedToday = String(game.startedAt || game.endedAt || "").slice(0, 10) === todayKey ||
+          String(game.endedAt || game.startedAt || "").slice(0, 10) === todayKey;
+        return playedToday && Array.isArray(game.players) && game.players.includes(memberId);
+      }).length;
+    }
+
+    function playerCard(member, selectable = true) {
+      const div = document.createElement("button");
+      div.className = playerClass(member);
+      div.type = "button";
+      const displayGames = todayGameCount(member.id);
+      div.innerHTML = `
+        <span class="player-name">${escapeHtml(member.name)}${partnerIdFor(member.id) ? '<span class="guest-badge">P</span>' : ""}</span>
+        <span class="player-meta">
+          <span class="meta-chip dark">${displayGames}게임</span>
+          <span class="meta-chip">${escapeHtml(member.grade)}</span>
+        </span>
+      `;
+      if (selectable) {
+        div.addEventListener("click", () => {
+          state.selected = new Set(playablePartnerIds(member.id));
+          renderWaiting();
+          openCourtModal(member.id);
+        });
+      }
+      return div;
+    }
+
+    function renderWaiting() {
+      const grid = $("courtGrid");
+      const assignedIds = assignedPlayerIds();
+      grid.innerHTML = "";
+      ALL_COURTS.forEach((court) => {
+        const courtType = isGameCourt(court) ? "game-court" : "wait-court";
+        const active = isGameCourt(court) ? activeGames().find((g) => Number(g.court) === court) : null;
+        const assigned = state.courtAssignments?.[court] || [];
+        const label = document.createElement("div");
+        label.className = `court-cell court-label-cell ${courtType}`;
+        if (active) {
+          const endBtn = document.createElement("button");
+          endBtn.type = "button";
+          endBtn.className = "court-start-btn";
+          const elapsed = Math.max(0, Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 60000));
+          endBtn.textContent = `${court}번 ~ ${elapsed}분 종료`;
+          endBtn.addEventListener("click", () => finishGame(active.id));
+          label.appendChild(endBtn);
+        } else if (isGameCourt(court) && assigned.length === 4) {
+          const startBtn = document.createElement("button");
+          startBtn.type = "button";
+          startBtn.className = "court-start-btn";
+          startBtn.textContent = `${court}번 시작`;
+          startBtn.addEventListener("click", () => startAssignedGame(court));
+          label.appendChild(startBtn);
+        } else {
+          label.innerHTML = `<span class="court-label">${court}번${isGameCourt(court) ? "" : "<br>대기"}</span>`;
+        }
+        grid.appendChild(label);
+        for (let slot = 0; slot < 4; slot += 1) {
+          const cell = document.createElement("div");
+          cell.className = `court-cell ${courtType}`;
+          const assignedId = assigned[slot];
+          const player = active?.players?.[slot] ? state.members[active.players[slot]] : assignedId ? state.members[assignedId] : null;
+          if (player) {
+            const card = playerCard(player, false);
+            if (!active && assignedId) {
+              card.classList.add("assigned");
+              card.title = "클릭하여 배정을 변경하거나 게임제외할 수 있습니다.";
+              card.addEventListener("click", () => openCourtModal(player.id));
+            }
+            cell.appendChild(card);
+          }
+          grid.appendChild(cell);
+        }
+      });
+
+      const waiting = memberList()
+        .filter((m) => (m.status === "WAIT" || m.status === "EXCLUDED") && !assignedIds.has(m.id))
+        .sort((a, b) => {
+          const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return aTime - bTime || a.name.localeCompare(b.name, "ko");
+        });
+      const list = $("waitingList");
+      list.innerHTML = "";
+      waiting.forEach((m) => list.appendChild(playerCard(m, true)));
+    }
+    function activeGames() {
+      return Object.values(state.games || {}).filter((g) => g.status === "PLAY").sort((a, b) => Number(a.court) - Number(b.court));
+    }
+
+    function gradeScore(member) {
+      return { S: 6, A: 5, B: 4, C: 3, D: 2, E: 1, G: 0 }[String(member.grade || "D").toUpperCase()] ?? 2;
+    }
+
+    function assignedPlayerIds() {
+      return new Set(Object.values(state.courtAssignments || {}).flat());
+    }
+
+    function firstAssignableCourt() {
+      for (const court of WAIT_COURTS) {
+        if (!(state.courtAssignments[court] || []).length) return court;
+      }
+      for (const court of GAME_COURTS) {
+        if (!activeGames().some((g) => Number(g.court) === court) && !(state.courtAssignments[court] || []).length) return court;
+      }
+      return null;
+    }
+
+    function compactWaitingCourts() {
+      const groups = WAIT_COURTS
+        .map((court) => state.courtAssignments[court])
+        .filter((ids) => Array.isArray(ids) && ids.length);
+      WAIT_COURTS.forEach((court) => delete state.courtAssignments[court]);
+      groups.forEach((ids, index) => {
+        state.courtAssignments[WAIT_COURTS[index]] = ids;
+      });
+    }
+
+    function promoteNextWaitingCourt(openCourt) {
+      if (!isGameCourt(openCourt)) return null;
+      const nextWaitingCourt = WAIT_COURTS.find((court) => (state.courtAssignments[court] || []).length);
+      if (!nextWaitingCourt) return null;
+      state.courtAssignments[openCourt] = [...state.courtAssignments[nextWaitingCourt]];
+      delete state.courtAssignments[nextWaitingCourt];
+      compactWaitingCourts();
+      return nextWaitingCourt;
+    }
+
+    function assignGroupToCourt(members, court) {
+      const ids = members.slice(0, 4).map((member) => member.id);
+      Object.keys(state.courtAssignments || {}).forEach((key) => {
+        state.courtAssignments[key] = (state.courtAssignments[key] || []).filter((id) => !ids.includes(id));
+      });
+      state.courtAssignments[court] = ids;
+      state.selected = new Set(ids);
+      renderWaiting();
+    }
+
+    function unassignPlayerFromCourt(memberId, court) {
+      if (!state.courtAssignments?.[court]) return;
+      state.courtAssignments[court] = state.courtAssignments[court].filter((id) => id !== memberId);
+      if (!state.courtAssignments[court].length) delete state.courtAssignments[court];
+      state.selected.delete(memberId);
+      renderWaiting();
+      toast("대기 상태로 이동했습니다.");
+    }
+
+    function fixedUnitFor(member, waitingById) {
+      const partnerId = partnerIdFor(member.id);
+      const partner = partnerId ? waitingById.get(partnerId) : null;
+      return partner ? [member, partner] : [member];
+    }
+
+    function addUnitToPicked(unit, picked, seen) {
+      if (!unit.length || picked.length + unit.length > 4) return false;
+      if (unit.some((member) => seen.has(member.id))) return false;
+      unit.forEach((member) => {
+        picked.push(member);
+        seen.add(member.id);
+      });
+      return true;
+    }
+
+    function pickPartnerAware(baseMembers, waitingMembers) {
+      if (!baseMembers || baseMembers.length < 4) return null;
+      const waitingById = new Map(waitingMembers.map((member) => [member.id, member]));
+      const baseIds = new Set(baseMembers.map((member) => member.id));
+      const picked = [];
+      const seen = new Set();
+      let fixedPairUsed = false;
+
+      baseMembers.forEach((member) => {
+        if (picked.length === 4 || seen.has(member.id)) return;
+        const unit = fixedUnitFor(member, waitingById);
+        if (unit.length > 1) {
+          if (fixedPairUsed) return;
+          if (addUnitToPicked(unit, picked, seen)) fixedPairUsed = true;
+          return;
+        }
+        addUnitToPicked(unit, picked, seen);
+      });
+
+      waitingMembers.forEach((member) => {
+        if (picked.length === 4 || seen.has(member.id) || baseIds.has(member.id)) return;
+        const unit = fixedUnitFor(member, waitingById);
+        if (unit.length === 1) addUnitToPicked(unit, picked, seen);
+      });
+
+      if (picked.length < 4) {
+        waitingMembers.forEach((member) => {
+          if (picked.length === 4 || seen.has(member.id)) return;
+          const unit = fixedUnitFor(member, waitingById);
+          if (unit.length > 1 && addUnitToPicked(unit, picked, seen)) fixedPairUsed = true;
+        });
+      }
+
+      return picked.length === 4 ? picked : null;
+    }
+    function pickAutoMatch(mode) {
+      const alreadyAssigned = assignedPlayerIds();
+      const waiting = memberList().filter((m) => m.status === "WAIT" && !alreadyAssigned.has(m.id));
+      if (waiting.length < 4) return null;
+      if (mode === "gender") {
+        const male = pickPartnerAware(waiting.filter((m) => m.gender === "남").slice(0, 4), waiting);
+        const female = pickPartnerAware(waiting.filter((m) => m.gender === "여").slice(0, 4), waiting);
+        return male || female;
+      }
+      if (mode === "mixed") {
+        const male = waiting.filter((m) => m.gender === "남").slice(0, 2);
+        const female = waiting.filter((m) => m.gender === "여").slice(0, 2);
+        return male.length === 2 && female.length === 2 ? pickPartnerAware([...male, ...female], waiting) : null;
+      }
+      if (mode === "grade") {
+        const base = [...waiting].sort((a, b) => gradeScore(b) - gradeScore(a)).filter((member, index, sorted) => {
+          if (index === 0 || index === sorted.length - 1) return true;
+          return index % Math.max(1, Math.floor(sorted.length / 4)) === 0;
+        }).slice(0, 4);
+        return pickPartnerAware(base, waiting);
+      }
+      return null;
+    }
+    function autoMatch(mode) {
+      const picked = pickAutoMatch(mode);
+      if (!picked || picked.length < 4) {
+        toast("조건에 맞는 대기자가 4명 이상 필요합니다.");
+        return;
+      }
+      const court = firstAssignableCourt();
+      if (!court) {
+        toast("배정 가능한 코트가 없습니다.");
+        return;
+      }
+      assignGroupToCourt(picked, court);
+      toast(`${court}번 코트에 4명 배정되었습니다. 코트의 시작 버튼을 눌러주세요.`);
+    }
+
+    function gradeMatchCandidates(grade) {
+      const assigned = assignedPlayerIds();
+      return memberList()
+        .filter((member) => member.status === "WAIT" && !assigned.has(member.id))
+        .filter((member) => String(member.grade || "D").toUpperCase() === grade)
+        .sort((a, b) => {
+          const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return aTime - bTime || a.name.localeCompare(b.name, "ko");
+        });
+    }
+
+    function assignGradeMatch(grade) {
+      const picked = gradeMatchCandidates(grade).slice(0, 4);
+      if (picked.length < 4) {
+        toast(`${grade}급 대기자가 4명 이상 필요합니다.`);
+        return;
+      }
+      const court = firstAssignableCourt();
+      if (!court) {
+        toast("배정 가능한 코트가 없습니다.");
+        return;
+      }
+      assignGroupToCourt(picked, court);
+      renderGradeMatch();
+      toast(`${grade}급 4명을 ${court}번 코트에 배정했습니다.`);
+    }
+
+    function autoAssignGradeMatch() {
+      const grade = ["S", "A", "B", "C", "D", "E", "G"].find((item) => gradeMatchCandidates(item).length >= 4);
+      if (!grade) {
+        toast("같은 급수의 대기자 4명이 있는 급수가 없습니다.");
+        return;
+      }
+      assignGradeMatch(grade);
+    }
+
+    function renderGradeMatch() {
+      const root = $("gradeMatchList");
+      if (!root) return;
+      root.innerHTML = "";
+      ["S", "A", "B", "C", "D", "E", "G"].forEach((grade) => {
+        const members = gradeMatchCandidates(grade);
+        const row = document.createElement("div");
+        row.className = "grade-match-row";
+        const names = members.length
+          ? members.map((member) => escapeHtml(member.name)).join(", ")
+          : '<span class="grade-match-empty">대기자가 없습니다.</span>';
+        row.innerHTML = `
+          <div class="grade-match-badge">${grade}</div>
+          <div class="grade-match-people">
+            <div>${names}</div>
+            <div class="grade-match-count">대기 ${members.length}명${members.length >= 4 ? " · 즉시 배정 가능" : ""}</div>
+          </div>
+        `;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "toolbar-btn grade-match-btn";
+        button.textContent = "4명 배정";
+        button.disabled = members.length < 4;
+        button.title = members.length < 4 ? "같은 급수 대기자 4명이 필요합니다." : `${grade}급 4명 배정`;
+        button.addEventListener("click", () => assignGradeMatch(grade));
+        row.appendChild(button);
+        root.appendChild(row);
+      });
+    }
+    function renderPlaying() {
+      const root = $("activeGames");
+      root.innerHTML = "";
+      for (const court of GAME_COURTS) {
+        const game = activeGames().find((g) => Number(g.court) === court);
+        const label = document.createElement("div");
+        label.className = "court-cell";
+        if (game) {
+          const endBtn = document.createElement("button");
+          endBtn.className = "start-game";
+          const elapsed = Math.max(0, Math.floor((Date.now() - new Date(game.startedAt).getTime()) / 60000));
+          endBtn.textContent = `~ ${elapsed}분 종료`;
+          endBtn.addEventListener("click", () => finishGame(game.id));
+          label.appendChild(endBtn);
+        } else {
+          label.innerHTML = `<span class="court-label">${court} 코트</span>`;
+        }
+        root.appendChild(label);
+        for (let slot = 0; slot < 4; slot += 1) {
+          const cell = document.createElement("div");
+          cell.className = "court-cell";
+          const player = game?.players?.[slot] ? state.members[game.players[slot]] : null;
+          if (player) cell.appendChild(playerCard(player, false));
+          root.appendChild(cell);
+        }
+      }
+    }
+
+    function renderMembers() {
+      $("memberAdminLocked").classList.toggle("hidden", state.isAdmin);
+      $("memberAdminPanel").classList.toggle("hidden", !state.isAdmin);
+      if (!state.isAdmin) return;
+      $("memberTabBtn")?.classList.toggle("active", state.memberTab === "member");
+      $("guestTabBtn")?.classList.toggle("active", state.memberTab === "guest");
+      const q = normalizeName($("memberSearch").value).toLowerCase();
+      const rows = $("memberRows");
+      rows.innerHTML = "";
+      memberManageList()
+        .filter((m) => state.memberTab === "guest" ? m.isGuest : !m.isGuest)
+        .filter((m) => !q || m.name.toLowerCase().includes(q))
+        .forEach((m) => {
+        const tr = document.createElement("tr");
+        const attendance = memberMonthlyAttendance(m.id);
+        if (!m.isGuest && attendance === 0) tr.classList.add("member-no-attendance");
+        const statusIcon = m.status === "WAIT" ? "Ⅱ" : m.status === "PLAY" ? "▶" : "■";
+        tr.innerHTML = `
+          <td class="name ${m.admin ? "member-admin-name" : m.isGuest ? "member-guest-name" : "member-normal-name"}">
+            <span class="member-name-cell">
+              <button class="status-toggle ${m.status === "PLAY" ? "play" : m.status === "DEFAULT" ? "off" : ""}" data-status="${m.id}" title="상태 변경">${statusIcon}</button>
+              <span class="member-name-text">${escapeHtml(m.name)}${m.admin ? " <span class='admin-badge'>운영</span>" : ""}</span>
+            </span>
+          </td>
+          <td>${escapeHtml(m.grade)}</td>
+          <td>${escapeHtml(m.gender)}</td>
+          <td>
+            <button class="manage-btn" data-edit="${m.id}" title="수정">✎</button>
+            <button class="manage-btn" data-delete="${m.id}" title="삭제">×</button>
+          </td>
+        `;
+        rows.appendChild(tr);
+      });
+      rows.querySelectorAll("[data-status]").forEach((btn) => btn.addEventListener("click", () => toggleMemberStatus(btn.dataset.status)));
+      rows.querySelectorAll("[data-edit]").forEach((btn) => btn.addEventListener("click", () => openMemberModal(state.members[btn.dataset.edit])));
+      rows.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", () => deleteMember(btn.dataset.delete)));
+      if (!rows.children.length) {
+        rows.innerHTML = `<tr><td colspan="4">${state.memberTab === "guest" ? "등록된 게스트 회원이 없습니다." : "등록된 회원이 없습니다."}</td></tr>`;
+      }
+    }
+
+    async function toggleMemberStatus(id) {
+      const member = state.members[id];
+      if (!member) return;
+      const nextStatus = member.status === "DEFAULT" ? "WAIT" : member.status === "WAIT" ? "PLAY" : "DEFAULT";
+      await dbPatch(`members/${id}`, { status: nextStatus, updatedAt: now() });
+      await loadData();
+      toast(`${member.name} 상태가 ${nextStatus}(으)로 변경되었습니다.`);
+    }
+
+    function ageBand(birthYear) {
+      const year = Number(birthYear || 0);
+      if (!year || year < 1900) return "-";
+      const age = new Date().getFullYear() - year + 1;
+      return `${Math.floor(age / 10) * 10}대`;
+    }
+
+    function selectedStatsRange() {
+      const today = new Date().toISOString().slice(0, 10);
+      const start = $("statStartDate")?.value || today.slice(0, 8) + "01";
+      const end = $("statEndDate")?.value || today;
+      return { start, end, monthKey: end.slice(0, 7) };
+    }
+
+    function memberMonthlyAttendance(memberId) {
+      const { start, end, monthKey } = selectedStatsRange();
+      const dates = new Set();
+      Object.values(state.games || {}).forEach((game) => {
+        if (!Array.isArray(game.players) || !game.players.includes(memberId)) return;
+        const gameDate = String(game.startedAt || game.endedAt || "").slice(0, 10);
+        if (!gameDate || !gameDate.startsWith(monthKey)) return;
+        if (gameDate < start || gameDate > end) return;
+        dates.add(gameDate);
+      });
+      const member = state.members[memberId];
+      const updatedDate = String(member?.updatedAt || "").slice(0, 10);
+      if (member && member.status !== "DEFAULT" && updatedDate.startsWith(monthKey) && updatedDate >= start && updatedDate <= end) {
+        dates.add(updatedDate);
+      }
+      return dates.size;
+    }
+
+    function renderStats() {
+      const list = memberList();
+      const rows = $("statsRows");
+      if (rows) {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        rows.innerHTML = "";
+        list
+          .filter((m) => !m.isGuest || m.status !== "DEFAULT")
+          .sort((a, b) => Number(b.games || 0) - Number(a.games || 0) || a.name.localeCompare(b.name, "ko"))
+          .slice(0, 80)
+          .forEach((m, index) => {
+            const attendance = memberMonthlyAttendance(m.id);
+            const games = Number(m.games || 0);
+            const today = todayGameCount(m.id);
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td><button type="button" class="stats-name-btn" data-stat-member="${escapeAttr(m.id)}">${escapeHtml(m.name)}</button></td>
+              <td>${escapeHtml(ageBand(m.birthYear))}</td>
+              <td>${escapeHtml(m.gender)}</td>
+              <td>${escapeHtml(m.grade)}</td>
+              <td>${attendance}</td>
+              <td>${games}</td>
+              <td>${attendance ? Math.round(games / attendance) : 0}</td>
+              <td>${today}</td>
+            `;
+            rows.appendChild(tr);
+          });
+        rows.querySelectorAll("[data-stat-member]").forEach((btn) => {
+          btn.addEventListener("click", () => openMemberGameDetail(btn.dataset.statMember));
+        });
+      }
+      const normalMembers = list.filter((m) => !m.isGuest).length;
+      const guests = list.filter((m) => m.isGuest).length;
+      $("registeredCount").textContent = `회원 ${normalMembers}명 · 게스트 ${guests}명`;
+    }
+
+
+    function openMemberGameDetail(memberId) {
+      const member = state.members[memberId];
+      if (!member) return;
+      const { start, end } = selectedStatsRange();
+      const partners = new Map();
+      Object.values(state.games || {}).forEach((game) => {
+        if (!Array.isArray(game.players) || !game.players.includes(memberId)) return;
+        const gameDate = String(game.startedAt || game.endedAt || "").slice(0, 10);
+        if (!gameDate || gameDate < start || gameDate > end) return;
+        game.players.forEach((id) => {
+          if (id === memberId) return;
+          const player = state.members[id];
+          if (!player) return;
+          const row = partners.get(id) || { member: player, games: 0 };
+          row.games += 1;
+          partners.set(id, row);
+        });
+      });
+      const rows = Array.from(partners.values())
+        .sort((a, b) => b.games - a.games || a.member.name.localeCompare(b.member.name, "ko"))
+        .map((row, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(row.member.name)}</td>
+            <td>${escapeHtml(row.member.gender)}</td>
+            <td>${escapeHtml(ageBand(row.member.birthYear))}</td>
+            <td>${escapeHtml(row.member.grade)}</td>
+            <td>${row.games}</td>
+          </tr>
+        `).join("");
+      showModal(`${escapeHtml(member.name)}님 게임 기록 보기`, `
+        <table class="game-history-table">
+          <thead><tr><th>순번</th><th>이름</th><th>성별</th><th>나이</th><th>급수</th><th>게임</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6">선택한 기간의 게임 기록이 없습니다.</td></tr>'}</tbody>
+        </table>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["닫기", closeModal]
+      ]);
+    }
+    function renderAll() {
+      renderWaiting();
+      renderPlaying();
+      renderGradeMatch();
+      renderMembers();
+      renderStats();
+    }
+
+    function openAdminModal(targetView = "") {
+      showModal("운영자 로그인", `
+        <div class="field full">
+          <label for="adminEmail">Firebase Auth 이메일 또는 운영자 ID</label>
+          <input id="adminEmail" type="text" placeholder="운영자 이메일 / ID (비워도 됨)">
+        </div>
+        <div class="field full">
+          <label for="adminAuthPass">비밀번호</label>
+          <input id="adminAuthPass" type="password" placeholder="비밀번호 입력">
+        </div>
+      `, [
+        ["취소", closeModal],
+        ["확인", async () => {
+          const email = $("adminEmail").value.trim();
+          const authPass = $("adminAuthPass").value;
+          try {
+            const isLocalAdmin = (!email || email === LOCAL_ADMIN_ID) && authPass === LOCAL_ADMIN_PASSWORD;
+            const user = isLocalAdmin || (!email && !authPass)
+              ? await ensureAnonymousUser()
+              : (await authService().signInWithEmailAndPassword(email, authPass)).user;
+            state.authUser = user;
+            await enterAdminWithUser(user, { allowLocal: isLocalAdmin, targetView });
+          } catch (error) {
+            console.error(error);
+            toast(error.message || "운영자 로그인에 실패했습니다.");
+          }
+        }, "confirm"]
+      ]);
+      setTimeout(() => $("adminEmail")?.focus(), 50);
+    }
+
+    async function enterAdminWithUser(user, options = {}) {
+      const adminAllowed = await dbGet(`admins/${user.uid}`).catch(() => false);
+      const uidAllowed = user.uid === ADMIN_UID;
+      if (adminAllowed === true || uidAllowed || options.allowLocal) {
+        if (uidAllowed && adminAllowed !== true) {
+          await dbPut(`admins/${user.uid}`, true).catch((error) => console.warn("admin self-register failed", error));
+        }
+        state.isAdmin = true;
+        sessionStorage.setItem("clubAdmin", "1");
+        closeModal();
+        $("loginPage").classList.add("hidden");
+        $("appPage").classList.remove("hidden");
+        if (options.targetView) {
+          setView(options.targetView);
+        } else {
+          openAdminMenu();
+        }
+        toast(options.allowLocal ? `ID 운영자로 로그인했습니다. UID: ${user.uid}` : user.isAnonymous ? "익명 운영자로 로그인했습니다." : "Firebase 운영자로 로그인했습니다.");
+      } else {
+        toast(`운영자 UID가 아닙니다. 현재 UID: ${user.uid}`);
+      }
+    }
+
+    function openMemberManagement() {
+      if (state.isAdmin) {
+        setView("members");
+        return;
+      }
+      openAdminModal("members");
+    }
+
+    function backToAdminMenu() {
+      closeModal();
+      openAdminMenu();
+    }
+
+    function openAdminMenu() {
+      showModal("운영진 메뉴", `
+        <div class="admin-menu">
+          <button class="admin-menu-btn members-menu" id="adminMembersMenu">회원관리</button>
+          <button class="admin-menu-btn exit-all-menu" id="adminExitAllMenu">대기화면 전체 퇴장하기</button>
+          <button class="admin-menu-btn" id="adminStatsMenu">클럽통계</button>
+          <button class="admin-menu-btn" id="adminDuesMenu">월간 회비 입금 체크</button>
+          <button class="admin-menu-btn" id="adminDuesYearMenu">회비 년간 통계</button>
+          <button class="admin-menu-btn" id="adminFinanceMenu">입출금 관리</button>
+          <button class="admin-menu-btn" id="adminResetStatsMenu">클럽 통계 초기화</button>
+        </div>
+      `, [
+        ["닫기", closeModal]
+      ]);
+      $("adminMembersMenu").addEventListener("click", () => {
+        closeModal();
+        setView("members");
+      });
+      $("adminExitAllMenu").addEventListener("click", adminExitAllWaiting);
+      $("adminStatsMenu").addEventListener("click", () => {
+        closeModal();
+        setView("stats");
+      });
+      $("adminDuesMenu").addEventListener("click", () => {
+        closeModal();
+        openDuesModal();
+      });
+      $("adminDuesYearMenu").addEventListener("click", () => {
+        closeModal();
+        openDuesYearModal();
+      });
+      $("adminFinanceMenu").addEventListener("click", () => {
+        closeModal();
+        openFinanceModal();
+      });
+      $("adminResetStatsMenu").addEventListener("click", openResetStatsConfirm);
+    }
+
+    async function adminExitAllWaiting() {
+      if (!confirm("대기화면의 모든 회원을 퇴장 처리할까요? 진행중 게임도 종료 처리됩니다.")) return;
+      const updates = {};
+      memberList().forEach((member) => {
+        if (member.status !== "DEFAULT") {
+          updates[`members/${member.id}/status`] = "DEFAULT";
+          updates[`members/${member.id}/updatedAt`] = now();
+        }
+      });
+      activeGames().forEach((game) => {
+        updates[`games/${game.id}/status`] = "DONE";
+        updates[`games/${game.id}/endedAt`] = game.endedAt || now();
+        updates[`games/${game.id}/adminEnded`] = true;
+      });
+      if (!Object.keys(updates).length) {
+        toast("퇴장 처리할 대기자가 없습니다.");
+        return;
+      }
+      await dbPatch("/", updates);
+      state.courtAssignments = {};
+      state.selected.clear();
+      closeModal();
+      await loadData();
+      setView("waiting");
+      toast("대기화면 전체 퇴장 처리했습니다.");
+    }
+
+    function openPartnerPairsModal() {
+      const members = memberList();
+      const options = members.map((member) => `<option value="${escapeAttr(member.id)}">${escapeHtml(member.name)}${member.isGuest ? " (게스트)" : ""} · ${escapeHtml(member.grade)} · ${escapeHtml(member.gender)}</option>`).join("");
+      const pairRows = Object.entries(state.partnerPairs || {}).map(([id, pair]) => {
+        const a = state.members[pair.a];
+        const b = state.members[pair.b];
+        if (!a || !b) return "";
+        return `
+          <tr>
+            <td>${escapeHtml(a.name)}${a.isGuest ? " (게스트)" : ""}</td>
+            <td>${escapeHtml(b.name)}${b.isGuest ? " (게스트)" : ""}</td>
+            <td><button type="button" class="icon-btn" data-delete-pair="${escapeAttr(id)}">×</button></td>
+          </tr>
+        `;
+      }).join("");
+      showModal("파트너 묶음", `
+        <div class="form-grid">
+          <div class="field"><label>선수 1</label><select id="pairA">${options}</select></div>
+          <div class="field"><label>선수 2</label><select id="pairB">${options}</select></div>
+        </div>
+        <div class="modal-table-scroll">
+          <table class="stats-table">
+            <thead><tr><th>선수 1</th><th>선수 2</th><th>삭제</th></tr></thead>
+            <tbody>${pairRows || '<tr><td colspan="3">등록된 파트너 묶음이 없습니다.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["닫기", closeModal],
+        ["추가", addPartnerPair, "confirm"]
+      ]);
+      document.querySelectorAll("[data-delete-pair]").forEach((btn) => {
+        btn.addEventListener("click", () => deletePartnerPair(btn.dataset.deletePair));
+      });
+    }
+
+    async function addPartnerPair() {
+      const a = $("pairA").value;
+      const b = $("pairB").value;
+      if (!a || !b || a === b) return toast("서로 다른 2명을 선택하세요.");
+      const already = Object.values(state.partnerPairs || {}).some((pair) => pair && ([pair.a, pair.b].includes(a) || [pair.a, pair.b].includes(b)));
+      if (already) return toast("이미 파트너 묶음에 포함된 회원입니다.");
+      const id = `pair_${Date.now()}`;
+      await dbPut(`partnerPairs/${id}`, { id, a, b, createdAt: now() });
+      await loadData();
+      openPartnerPairsModal();
+      toast("파트너 묶음을 추가했습니다.");
+    }
+
+    async function deletePartnerPair(id) {
+      if (!id || !confirm("파트너 묶음을 삭제할까요?")) return;
+      await dbDelete(`partnerPairs/${id}`);
+      await loadData();
+      openPartnerPairsModal();
+      toast("파트너 묶음을 삭제했습니다.");
+    }
+
+
+    function openResetStatsConfirm() {
+      showModal("클럽 통계 초기화", `
+        <p>게임 기록과 회원별 경기횟수를 모두 초기화합니다.</p>
+        <p>진행중 상태의 회원은 대기 상태로 변경됩니다.</p>
+        <p><strong>정말 초기화하시겠습니까?</strong></p>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["취소", closeModal],
+        ["초기화", resetClubStats, "confirm"]
+      ]);
+    }
+
+    async function resetClubStats() {
+      const updates = { games: null };
+      memberList().forEach((member) => {
+        updates[`members/${member.id}/games`] = 0;
+        updates[`members/${member.id}/updatedAt`] = now();
+        if (member.status === "PLAY") updates[`members/${member.id}/status`] = "WAIT";
+      });
+      await dbPatch("/", updates);
+      state.selected.clear();
+      state.courtAssignments = {};
+      closeModal();
+      await loadData();
+      setView("stats");
+      toast("클럽 통계가 초기화되었습니다.");
+    }
+    async function openDuesModal(selectedMonth = new Date().toISOString().slice(0, 7)) {
+      const month = selectedMonth;
+      const dues = await dbGet("dues").catch(() => ({})) || {};
+      const members = memberList().filter((m) => !m.isGuest);
+      const rows = members.map((m) => {
+        const checked = Boolean(dues?.[m.id]?.[month] || dues?.[m.name]?.[month]);
+        return `
+          <div class="dues-row">
+            <label for="dues_${escapeAttr(m.id)}">${escapeHtml(m.name)} · ${escapeHtml(m.grade)} · ${escapeHtml(m.gender)}</label>
+            <input id="dues_${escapeAttr(m.id)}" data-dues-id="${escapeAttr(m.id)}" type="checkbox" ${checked ? "checked" : ""}>
+          </div>
+        `;
+      }).join("");
+      showModal("월간 회비 입금내역", `
+        <div class="dues-month">
+          <strong>월 선택</strong>
+          <input id="duesMonth" type="month" value="${month}">
+        </div>
+        <div class="dues-list" id="duesList">${rows}</div>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["▣ 체크박스 전체선택", toggleAllDues],
+        ["취소", closeModal],
+        ["저장", saveDues, "confirm"]
+      ]);
+      $("duesMonth").addEventListener("change", () => openDuesModal($("duesMonth").value));
+    }
+
+    function toggleAllDues() {
+      const boxes = Array.from(document.querySelectorAll("[data-dues-id]"));
+      const shouldCheck = boxes.some((box) => !box.checked);
+      boxes.forEach((box) => { box.checked = shouldCheck; });
+      toast(shouldCheck ? "전체 선택되었습니다." : "전체 해제되었습니다.");
+    }
+
+    async function saveDues() {
+      const month = $("duesMonth").value || new Date().toISOString().slice(0, 7);
+      const updates = {};
+      document.querySelectorAll("[data-dues-id]").forEach((input) => {
+        updates[`dues/${input.dataset.duesId}/${month}`] = input.checked;
+      });
+      await dbPatch("/", updates);
+      closeModal();
+      toast("월간 회비 입금내역이 저장되었습니다.");
+    }
+
+    async function openDuesHistoryModal(selectedMonth = new Date().toISOString().slice(0, 7)) {
+      const dues = await dbGet("dues").catch(() => ({})) || {};
+      const members = memberList().filter((m) => !m.isGuest);
+      const rows = members.map((m, index) => {
+        const paid = Boolean(dues?.[m.id]?.[selectedMonth] || dues?.[m.name]?.[selectedMonth]);
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><button type="button" class="stats-name-btn" data-stat-member="${escapeAttr(m.id)}">${escapeHtml(m.name)}</button></td>
+            <td>${escapeHtml(m.grade)}</td>
+            <td>${escapeHtml(m.gender)}</td>
+              <td>${paid ? "납부" : "미납"}</td>
+          </tr>
+        `;
+      }).join("");
+      showModal("회비 납부내역", `
+        <div class="dues-month">
+          <strong>월 선택</strong>
+          <input id="historyMonth" type="month" value="${selectedMonth}">
+        </div>
+        <div class="modal-table-scroll">
+          <table class="stats-table">
+            <thead><tr><th>순위</th><th>이름</th><th>급수</th><th>성별</th><th>상태</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["닫기", closeModal]
+      ]);
+      $("historyMonth").addEventListener("change", () => openDuesHistoryModal($("historyMonth").value));
+    }
+
+    async function openDuesYearModal(selectedYear = new Date().getFullYear()) {
+      const year = String(selectedYear);
+      const dues = await dbGet("dues").catch(() => ({})) || {};
+      const members = memberList().filter((m) => !m.isGuest);
+      const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
+      const rows = members.map((m, index) => {
+        const cells = months.map((month, monthIndex) => {
+          const checked = Boolean(dues?.[m.id]?.[month] || dues?.[m.name]?.[month]);
+          return `<td><input type="checkbox" data-year-dues-id="${escapeAttr(m.id)}" data-year-dues-month="${month}" title="${monthIndex + 1}월" ${checked ? "checked" : ""}></td>`;
+        }).join("");
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><button type="button" class="stats-name-btn" data-stat-member="${escapeAttr(m.id)}">${escapeHtml(m.name)}</button></td>
+            <td>${escapeHtml(m.grade)}</td>
+            <td>${escapeHtml(m.gender)}</td>
+            ${cells}
+          </tr>
+        `;
+      }).join("");
+      showModal("회비 년간 통계", `
+        <div class="dues-month">
+          <strong>년도</strong>
+          <input id="historyYear" type="number" min="2000" max="2100" value="${year}">
+        </div>
+        <div class="modal-table-scroll">
+          <table class="stats-table year-dues-table">
+            <thead><tr><th>순위</th><th>이름</th><th>급수</th><th>성별</th>${Array.from({ length: 12 }, (_, i) => `<th>${i + 1}월</th>`).join("")}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["닫기", closeModal],
+        ["저장", saveYearDues, "confirm"]
+      ]);
+      $("historyYear").addEventListener("change", () => openDuesYearModal($("historyYear").value || new Date().getFullYear()));
+    }
+
+    async function saveYearDues() {
+      const updates = {};
+      document.querySelectorAll("[data-year-dues-id]").forEach((input) => {
+        updates[`dues/${input.dataset.yearDuesId}/${input.dataset.yearDuesMonth}`] = input.checked;
+      });
+      await dbPatch("/", updates);
+      closeModal();
+      toast("회비 년간 통계가 저장되었습니다.");
+    }
+
+    const money = (value) => `${Number(value || 0).toLocaleString("ko-KR")}원`;
+
+    async function openFinanceModal() {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = String(today.getMonth() + 1).padStart(2, "0");
+      const finance = await dbGet("finance").catch(() => ({})) || {};
+      const settings = { monthlyFee: 30000, associationFee: 15000, ...(finance.settings || {}) };
+      const transactions = Object.values(finance.transactions || {});
+      const dues = await dbGet("dues").catch(() => ({})) || {};
+      renderFinanceModal({ year: currentYear, month: currentMonth, settings, transactions, dues });
+    }
+
+    function renderFinanceModal(data) {
+      const { year, month, settings, transactions, dues } = data;
+      const monthKey = `${year}-${month}`;
+      const filtered = transactions.filter((t) => {
+        const date = String(t.date || "");
+        return date.startsWith(monthKey);
+      });
+      const totalIncome = filtered.filter((t) => t.type === "income").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const totalExpense = filtered.filter((t) => t.type === "expense").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const unpaid = memberList().filter((m) => !m.isGuest && !Boolean(dues?.[m.id]?.[monthKey] || dues?.[m.name]?.[monthKey]));
+      const excelRows = [
+        ["날짜", "구분", "항목", "내용", "금액"],
+        ...filtered.map((t) => [t.date || "", t.type === "income" ? "수입" : "지출", t.category || "", t.memo || "", Number(t.amount || 0)])
+      ];
+      const excelText = excelRows.map((row) => row.join("\t")).join("\n");
+      const transactionRows = filtered.map((t, index) => `
+        <tr><td>${index + 1}</td><td>${escapeHtml(t.date || "")}</td><td>${t.type === "income" ? "수입" : "지출"}</td><td>${escapeHtml(t.category || "")}</td><td>${escapeHtml(t.memo || "")}</td><td>${money(t.amount)}</td></tr>
+      `).join("");
+      const unpaidRows = unpaid.map((m, index) => `
+        <tr><td>${index + 1}</td><td><button type="button" class="stats-name-btn" data-stat-member="${escapeAttr(m.id)}">${escapeHtml(m.name)}</button></td><td>${escapeHtml(m.grade)}</td><td>${escapeHtml(m.gender)}</td><td>${money(Number(settings.monthlyFee || 30000) + Number(settings.associationFee || 15000))}</td></tr>
+      `).join("");
+
+      showModal("입출금 관리", `
+        <div class="finance-grid">
+          <div class="field"><label>연도별 조회</label><input id="financeYear" type="number" value="${year}"></div>
+          <div class="field"><label>월별 조회</label><select id="financeMonth">${Array.from({ length: 12 }, (_, i) => {
+            const value = String(i + 1).padStart(2, "0");
+            return `<option value="${value}" ${value === month ? "selected" : ""}>${i + 1}월</option>`;
+          }).join("")}</select></div>
+          <div class="field"><label>월회비 자동 금액</label><input id="monthlyFee" type="number" value="${Number(settings.monthlyFee || 30000)}"></div>
+          <div class="field"><label>협회비 자동 금액</label><input id="associationFee" type="number" value="${Number(settings.associationFee || 15000)}"></div>
+        </div>
+        <div class="finance-summary">
+          <div>총수입<strong>${money(totalIncome)}</strong></div>
+          <div>총지출<strong>${money(totalExpense)}</strong></div>
+          <div>잔액<strong>${money(totalIncome - totalExpense)}</strong></div>
+        </div>
+        <div class="finance-grid">
+          <div class="field"><label>일자</label><input id="txDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="field"><label>구분</label><select id="txType"><option value="income">수입</option><option value="expense">지출</option></select></div>
+          <div class="field"><label>항목</label><input id="txCategory" placeholder="재무관리 / 회비관리"></div>
+          <div class="field"><label>금액</label><input id="txAmount" type="number" placeholder="0"></div>
+          <div class="field full"><label>내용</label><input id="txMemo" placeholder="입출금내역 메모"></div>
+        </div>
+        <div class="stats-actions">
+          <button class="toolbar-btn" id="saveFinanceSettings">재무/회비 금액 저장</button>
+          <button class="toolbar-btn" id="addFinanceTx">입출금 추가</button>
+        </div>
+        <div class="stats-note">회원별 미납 확인</div>
+        <div class="modal-table-scroll"><table class="stats-table"><thead><tr><th>순위</th><th>이름</th><th>급수</th><th>성별</th><th>미납금액</th></tr></thead><tbody>${unpaidRows}</tbody></table></div>
+        <div class="stats-note">입출금내역</div>
+        <div class="modal-table-scroll"><table class="stats-table"><thead><tr><th>순위</th><th>날짜</th><th>구분</th><th>항목</th><th>내용</th><th>금액</th></tr></thead><tbody>${transactionRows}</tbody></table></div>
+        <div class="stats-note">엑셀 복사용 표 보기</div>
+        <textarea class="excel-copy" readonly>${escapeHtml(excelText)}</textarea>
+      `, [
+        ["운영진 메뉴", backToAdminMenu],
+        ["닫기", closeModal]
+      ]);
+      $("financeYear").addEventListener("change", () => renderFinanceModal({ ...data, year: $("financeYear").value || year }));
+      $("financeMonth").addEventListener("change", () => renderFinanceModal({ ...data, month: $("financeMonth").value }));
+      $("saveFinanceSettings").addEventListener("click", saveFinanceSettings);
+      $("addFinanceTx").addEventListener("click", addFinanceTransaction);
+    }
+
+    async function saveFinanceSettings() {
+      await dbPatch("finance/settings", {
+        monthlyFee: Number($("monthlyFee").value || 30000),
+        associationFee: Number($("associationFee").value || 15000),
+        updatedAt: now()
+      });
+      toast("재무/회비 금액이 저장되었습니다.");
+      closeModal();
+      openFinanceModal();
+    }
+
+    async function addFinanceTransaction() {
+      const amount = Number($("txAmount").value || 0);
+      if (!amount) return toast("금액을 입력하세요.");
+      const id = `tx_${Date.now()}`;
+      await dbPut(`finance/transactions/${id}`, {
+        id,
+        date: $("txDate").value || new Date().toISOString().slice(0, 10),
+        type: $("txType").value,
+        category: $("txCategory").value || "입출금내역",
+        memo: $("txMemo").value || "",
+        amount,
+        createdAt: now()
+      });
+      toast("입출금내역이 추가되었습니다.");
+      closeModal();
+      openFinanceModal();
+    }
+
+    function openGuestModal(prefill = "") {
+      showModal("게스트 입장", `
+        <div class="form-grid">
+          <div class="field"><label>이름</label><input id="gName" value="${escapeAttr(prefill)}" placeholder="이름"></div>
+          <div class="field"><label>성별</label><select id="gGender"><option>남</option><option>여</option></select></div>
+          <div class="field"><label>급수</label><select id="gGrade">${["S","A","B","C","D","E"].map((g) => `<option ${g === "D" ? "selected" : ""}>${g}</option>`).join("")}</select></div>
+          <div class="field"><label>출생년도</label><input id="gBirthYear" type="number" inputmode="numeric" placeholder="예: 1980"></div>
+        </div>
+      `, [
+        ["취소", closeModal],
+        ["입장하기", async () => {
+          const birthYear = $("gBirthYear").value.trim();
+          if (birthYear && (Number(birthYear) < 1900 || Number(birthYear) > 2100)) return toast("출생년도를 확인하세요.");
+          const info = {
+            name: $("gName").value,
+            gender: $("gGender").value,
+            grade: $("gGrade").value,
+            birthYear
+          };
+          closeModal();
+          await enterAsGuest(info);
+        }, "confirm"]
+      ]);
+      setTimeout(() => $("gName")?.focus(), 50);
+    }
+
+    function openMemberModal(member = null) {
+      const m = member || { name: "", grade: "D", gender: "남", status: "DEFAULT", isGuest: false, games: 0, admin: false, finance: false };
+      showModal(member ? "회원 상세 정보" : "회원 추가", `
+        <div class="form-grid">
+          <div class="field"><label>이름</label><input id="mName" value="${escapeAttr(m.name)}"></div>
+          <div class="field"><label>급수</label><select id="mGrade">${["S","A","B","C","D","E","G"].map((g) => `<option ${m.grade === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>
+          <div class="field"><label>성별</label><select id="mGender"><option ${m.gender === "남" ? "selected" : ""}>남</option><option ${m.gender === "여" ? "selected" : ""}>여</option></select></div>
+          <div class="field"><label>출생년도</label><input id="mBirthYear" type="number" inputmode="numeric" value="${escapeAttr(m.birthYear || "")}"></div>
+          <div class="field"><label>구분</label><select id="mGuest"><option value="false" ${!m.isGuest ? "selected" : ""}>회원</option><option value="true" ${m.isGuest ? "selected" : ""}>게스트</option></select></div>
+          <div class="field"><label>운영자</label><select id="mAdmin"><option value="false" ${!m.admin ? "selected" : ""}>아니오</option><option value="true" ${m.admin ? "selected" : ""}>예</option></select></div>
+          <div class="field"><label>재무담당자</label><select id="mFinance"><option value="false" ${!m.finance ? "selected" : ""}>아니오</option><option value="true" ${m.finance ? "selected" : ""}>예</option></select></div>
+        </div>
+      `, [
+        ["취소", closeModal],
+        ["업데이트", async () => {
+          const next = {
+            ...(member || {}),
+            id: member?.id || memberId(`${$("mName").value}_${Date.now()}`),
+            name: normalizeName($("mName").value),
+            grade: $("mGrade").value,
+            level: $("mGrade").value,
+            gender: $("mGender").value,
+            birthYear: $("mBirthYear").value.trim(),
+            isGuest: $("mGuest").value === "true",
+            guest: $("mGuest").value === "true",
+            admin: $("mAdmin").value === "true",
+            finance: $("mFinance").value === "true",
+            financeManager: $("mFinance").value === "true",
+            role: $("mAdmin").value === "true" ? "admin" : $("mFinance").value === "true" ? "finance" : "member",
+            updatedAt: now(),
+            createdAt: member?.createdAt || now()
+          };
+          if (!next.name) return toast("이름을 입력하세요.");
+          await dbPut(`members/${next.id}`, next);
+          closeModal();
+          await loadData();
+          toast("회원 정보가 저장되었습니다.");
+        }, "confirm"]
+      ]);
+    }
+
+    function todayGameHistoryRows(memberId) {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      return Object.values(state.games || {})
+        .filter((game) => {
+          const date = String(game.startedAt || game.endedAt || "").slice(0, 10);
+          return date === todayKey && Array.isArray(game.players) && game.players.includes(memberId);
+        })
+        .sort((a, b) => String(b.startedAt || "").localeCompare(String(a.startedAt || "")))
+        .map((game, index, arr) => {
+          const partners = (game.players || [])
+            .filter((id) => id !== memberId)
+            .map((id) => state.members[id]?.name)
+            .filter(Boolean)
+            .join(", ");
+          const start = String(game.startedAt || "").slice(5, 16).replace("T", " ");
+          const ended = game.endedAt ? String(Math.max(0, Math.floor((new Date(game.endedAt) - new Date(game.startedAt)) / 60000))) + " min" : "-";
+          return `<tr><td>${arr.length - index}</td><td>${escapeHtml(start)}</td><td>${escapeHtml(partners || "-")}</td><td>${ended}</td></tr>`;
+        });
+    }
+
+    function openCourtModal(memberId = null) {
+      const selectedId = memberId || Array.from(state.selected)[0];
+      const member = state.members[selectedId];
+      if (!member) {
+        toast("Select a waiting player first.");
+        return;
+      }
+      if (member.status === "EXCLUDED") {
+        showModal(`${escapeHtml(member.name)}님`, `
+          <div class="game-history-empty">게임제외 상태입니다. 매칭 복귀를 누르면 다시 대기열에 포함됩니다.</div>
+        `, [
+          ["매칭 복귀", async () => {
+            await dbPatch(`members/${selectedId}`, { status: "WAIT", updatedAt: now() });
+            closeModal();
+            await loadData();
+            toast("매칭 대기열에 복귀했습니다.");
+          }, "confirm"],
+          ["닫기", closeModal]
+        ]);
+        return;
+      }
+      state.selected = new Set(playablePartnerIds(selectedId));
+      renderWaiting();
+      const rows = todayGameHistoryRows(selectedId);
+      showModal(escapeHtml(member.name) + " nim", `
+        <div class="court-picker">
+          ${ALL_COURTS.map((court) => `<button class="court-btn" data-court="${court}">${court}${isGameCourt(court) ? "" : " 대기"}</button>`).join("")}
+        </div>
+        ${rows.length ? `
+          <table class="game-history-table">
+            <thead><tr><th>No</th><th>Start</th><th>Partner</th><th>Time</th></tr></thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>` : `<div class="game-history-empty">No games today.</div>`}
+      `, [
+        ["게임제외", () => excludeMemberFromMatching(selectedId)],
+        ["퇴장하기", async () => {
+          await dbPatch(`members/${selectedId}`, { status: "DEFAULT", updatedAt: now() });
+          Object.keys(state.courtAssignments || {}).forEach((court) => {
+            state.courtAssignments[court] = (state.courtAssignments[court] || []).filter((id) => id !== selectedId);
+          });
+          state.selected.clear();
+          closeModal();
+          await loadData();
+        }],
+        ["취소", () => {
+          state.selected.delete(selectedId);
+          closeModal();
+          renderWaiting();
+        }]
+      ]);
+      document.querySelectorAll("[data-court]").forEach((btn) => {
+        btn.addEventListener("click", () => assignPlayerToCourt(selectedId, Number(btn.dataset.court)));
+      });
+    }
+
+    async function excludeMemberFromMatching(memberId) {
+      const member = state.members[memberId];
+      if (!member) return;
+      Object.keys(state.courtAssignments || {}).forEach((court) => {
+        state.courtAssignments[court] = (state.courtAssignments[court] || []).filter((id) => id !== memberId);
+        if (!state.courtAssignments[court].length) delete state.courtAssignments[court];
+      });
+      state.selected.delete(memberId);
+      await dbPatch(`members/${memberId}`, { status: "EXCLUDED", updatedAt: now() });
+      closeModal();
+      await loadData();
+      toast(`${member.name}님을 게임제외 처리했습니다.`);
+    }
+
+    async function assignPlayerToCourt(memberId, court) {
+      if (isGameCourt(court) && activeGames().some((g) => Number(g.court) === court)) {
+        toast(`${court} court is already playing.`);
+        return;
+      }
+      const groupIds = playablePartnerIds(memberId);
+      Object.keys(state.courtAssignments || {}).forEach((key) => {
+        state.courtAssignments[key] = (state.courtAssignments[key] || []).filter((id) => !groupIds.includes(id));
+      });
+      const assigned = state.courtAssignments[court] || [];
+      const addIds = groupIds.filter((id) => !assigned.includes(id));
+      if (assigned.length + addIds.length > 4) {
+        toast(`${court}번 코트는 이미 4명 배정되었습니다.`);
+        return;
+      }
+      assigned.push(...addIds);
+      state.courtAssignments[court] = assigned.slice(0, 4);
+      state.selected = new Set(state.courtAssignments[court]);
+      closeModal();
+      renderWaiting();
+      if (state.courtAssignments[court].length === 4) {
+        toast(`${court}번 코트에 4명 배정되었습니다. 코트의 시작 버튼을 눌러주세요.`);
+      } else {
+        toast(`${court}번 코트 ${state.courtAssignments[court].length}/4 배정`);
+      }
+    }
+
+    function openRaiseModal() {
+      const waitingGroups = WAIT_COURTS
+        .map((court) => ({ court, ids: state.courtAssignments[court] || [] }))
+        .filter((group) => group.ids.length);
+      const openGameCourts = GAME_COURTS.filter((court) => {
+        return !activeGames().some((g) => Number(g.court) === court) && !(state.courtAssignments[court] || []).length;
+      });
+      if (!waitingGroups.length) return toast("6~10번 대기그룹이 없습니다.");
+      if (!openGameCourts.length) return toast("비어있는 게임코트가 없습니다.");
+      const rows = waitingGroups.map((group) => {
+        const nameChips = group.ids.map((id) => state.members[id]?.name).filter(Boolean).map((name) => `<span class="raise-name-chip">${escapeHtml(name)}</span>`).join("");
+        const buttons = openGameCourts.map((court) => {
+          return `<button class="mini-btn" data-raise-from="${group.court}" data-raise-to="${court}">${court}번</button>`;
+        }).join("");
+        return `
+          <div class="raise-row">
+            <div class="raise-row-head">
+              <strong class="raise-court-title">${group.court}번 대기</strong>
+            </div>
+            <div class="raise-names">${nameChips || '<span class="raise-name-chip">-</span>'}</div>
+            <div class="raise-targets">${buttons}</div>
+          </div>
+        `;
+      }).join("");
+      showModal("대기그룹 올리기", `<div class="raise-list">${rows}</div>`, [
+        ["취소", closeModal]
+      ]);
+      document.querySelectorAll("[data-raise-from]").forEach((btn) => {
+        btn.addEventListener("click", () => raiseWaitingGroup(Number(btn.dataset.raiseFrom), Number(btn.dataset.raiseTo)));
+      });
+    }
+
+    function raiseWaitingGroup(fromCourt, toCourt) {
+      const ids = state.courtAssignments[fromCourt] || [];
+      if (!WAIT_COURTS.includes(Number(fromCourt)) || !ids.length) return toast("올릴 대기그룹이 없습니다.");
+      if (!isGameCourt(toCourt)) return toast("1~5번 게임코트로만 올릴 수 있습니다.");
+      if (activeGames().some((g) => Number(g.court) === toCourt) || (state.courtAssignments[toCourt] || []).length) {
+        toast(`${toCourt}번 코트는 비어있지 않습니다.`);
+        return;
+      }
+      state.courtAssignments[toCourt] = [...ids];
+      delete state.courtAssignments[fromCourt];
+      compactWaitingCourts();
+      state.selected = new Set(ids);
+      closeModal();
+      renderWaiting();
+      toast(`${fromCourt}번 대기그룹을 ${toCourt}번 코트로 올렸습니다.`);
+    }
+
+    async function startAssignedGame(preferredCourt = null) {
+      const courts = Object.keys(state.courtAssignments || {}).map(Number).filter(isGameCourt).sort((a, b) => a - b);
+      let court = preferredCourt && isGameCourt(preferredCourt) && (state.courtAssignments[preferredCourt] || []).length === 4 ? preferredCourt : courts.find((number) => {
+        const ids = state.courtAssignments[number] || [];
+        return ids.length === 4 && ids.every((id) => state.selected.has(id));
+      });
+      if (!court) court = courts.find((number) => (state.courtAssignments[number] || []).length === 4);
+      if (!court) {
+        toast("코트에 4명을 먼저 배정해주세요.");
+        return;
+      }
+      const players = [...state.courtAssignments[court]];
+      await startGame(court, players);
+    }
+
+    function kakaoMemberNames(ids) {
+      return (ids || []).map((id) => state.members[id]?.name).filter(Boolean).join(", ");
+    }
+
+    function kakaoWaitingMembers() {
+      const assigned = typeof assignedPlayerIds === "function" ? assignedPlayerIds() : new Set();
+      return memberList().filter((m) => m.status === "WAIT" && !assigned.has(m.id));
+    }
+
+    function kakaoBuildStatusMessage(startedCourt = null, startedPlayers = null) {
+      const lines = [];
+      const stamp = new Date().toLocaleString("ko-KR", { hour12: false });
+      lines.push("[주둥아리 라켓 매칭현황]");
+      lines.push(stamp);
+      if (startedCourt && startedPlayers?.length) {
+        lines.push("");
+        lines.push(`▶ ${startedCourt}번 코트 게임 시작`);
+        lines.push(kakaoMemberNames(startedPlayers));
+      }
+      const games = activeGames();
+      lines.push("");
+      lines.push("게임중");
+      if (games.length) {
+        games.forEach((game) => lines.push(`${game.court}번 코트: ${kakaoMemberNames(game.players || [])}`));
+      } else {
+        lines.push("진행중인 게임 없음");
+      }
+      const waiting = kakaoWaitingMembers();
+      lines.push("");
+      lines.push(`대기 ${waiting.length}명`);
+      lines.push(waiting.length ? waiting.map((m) => `${m.name}(${m.grade}/${todayGameCount(m.id)})`).join(", ") : "대기자 없음");
+      return lines.join("\n");
+    }
+
+    async function kakaoCopyText(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const area = document.createElement("textarea");
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+
+    function openKakaoChatRoom() {
+      window.open(KAKAO_OPENCHAT_URL, "_blank", "noopener");
+      toast("카톡 오픈채팅방을 열었습니다.");
+    }
+
+    function openKakaoNotifyModal(startedCourt = null, startedPlayers = null) {
+      const message = kakaoBuildStatusMessage(startedCourt, startedPlayers);
+      showModal("카톡 오픈채팅 알림", `
+        <div class="field full">
+          <label for="kakaoMessage">전송할 내용</label>
+          <textarea id="kakaoMessage" rows="10">${escapeHtml(message)}</textarea>
+        </div>
+        <p class="hint">카카오 보안 정책상 자동 전송은 불가능합니다. 버튼을 누르면 내용이 복사되고 오픈채팅방이 열리니, 입력창에 붙여넣어 전송해주세요.</p>
+      `, [
+        ["닫기", closeModal],
+        ["내용 복사 후 카톡 열기", async () => {
+          const messageText = $("kakaoMessage").value;
+          await kakaoCopyText(messageText);
+          window.open(KAKAO_OPENCHAT_URL, "_blank", "noopener");
+          toast("알림 내용을 복사했습니다.");
+        }, "confirm"]
+      ]);
+    }
+    async function startGame(court, assignedPlayers = null) {
+      const players = assignedPlayers || Array.from(state.selected);
+      if (players.length !== 4) return toast("Assign 4 players.");
+      if (!isGameCourt(court)) return toast("게임 시작은 1~5번 게임코트에서만 가능합니다.");
+      if (activeGames().some((g) => Number(g.court) === court)) return toast(`${court} court is already playing.`);
+      const id = `game_${Date.now()}`;
+      const startedAt = now();
+      const updates = {
+        [`games/${id}`]: { id, court, players, status: "PLAY", startedAt }
+      };
+      players.forEach((id) => {
+        const m = state.members[id];
+        updates[`members/${id}/status`] = "PLAY";
+        updates[`members/${id}/games`] = Number(m?.games || 0) + 1;
+        updates[`members/${id}/updatedAt`] = startedAt;
+      });
+      try {
+        await dbPatch("/", updates);
+      } catch (error) {
+        console.error(error);
+        toast("게임 시작 저장에 실패했습니다. 코트 배정은 유지됩니다.");
+        return;
+      }
+      delete state.courtAssignments[court];
+      state.selected.clear();
+      closeModal();
+      await loadData();
+      setView("waiting");
+      toast("게임을 시작했습니다.");
+      if (state.isAdmin) openKakaoNotifyModal(court, players);
+    }
+    async function finishGame(gameId) {
+      const game = state.games[gameId];
+      if (!game) return;
+      const updates = {};
+      game.players.forEach((id) => {
+        updates[`members/${id}/status`] = "WAIT";
+        updates[`members/${id}/updatedAt`] = now();
+      });
+      updates[`games/${gameId}/status`] = "DONE";
+      updates[`games/${gameId}/endedAt`] = now();
+      await dbPatch("/", updates);
+      const promotedFrom = promoteNextWaitingCourt(Number(game.court));
+      await loadData();
+      renderWaiting();
+      toast(promotedFrom ? `${promotedFrom}번 대기팀이 ${game.court}번 코트로 이동했습니다.` : "게임이 종료되었습니다.");
+    }
+
+    async function restCurrentUser() {
+      const userId = sessionStorage.getItem("clubUserId");
+      if (!userId || !state.members[userId]) return toast("입장 정보가 없습니다.");
+      await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
+      await loadData();
+      toast("휴식 상태로 변경했습니다.");
+    }
+
+    async function returnCurrentUser() {
+      const userId = sessionStorage.getItem("clubUserId");
+      if (!userId || !state.members[userId]) return toast("입장 정보가 없습니다.");
+      await dbPatch(`members/${userId}`, { status: "WAIT", updatedAt: now() });
+      await loadData();
+      toast("대기 상태로 복귀했습니다.");
+    }
+
+    async function deleteMember(id) {
+      if (!confirm("회원을 삭제할까요?")) return;
+      await dbDelete(`members/${id}`);
+      await loadData();
+      toast("삭제되었습니다.");
+    }
+
+    function exportMembers() {
+      const rows = [
+        ["이름","급수","성별","출생년도","회원구분","운영자구분"],
+        ...memberManageList().map((m) => [
+          m.name,
+          m.grade,
+          m.gender,
+          m.birthYear || "",
+          m.isGuest ? "게스트" : "회원",
+          m.admin ? "운영자" : "일반"
+        ])
+      ];
+      const csv = rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `회원상세정보_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let quoted = false;
+      const source = String(text || "").replace(/^\uFEFF/, "");
+      for (let i = 0; i < source.length; i += 1) {
+        const ch = source[i];
+        const next = source[i + 1];
+        if (quoted) {
+          if (ch === '"' && next === '"') {
+            cell += '"';
+            i += 1;
+          } else if (ch === '"') {
+            quoted = false;
+          } else {
+            cell += ch;
+          }
+        } else if (ch === '"') {
+          quoted = true;
+        } else if (ch === ",") {
+          row.push(cell);
+          cell = "";
+        } else if (ch === "\n") {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = "";
+        } else if (ch !== "\r") {
+          cell += ch;
+        }
+      }
+      row.push(cell);
+      if (row.some((value) => String(value).trim())) rows.push(row);
+      return rows;
+    }
+
+    function truthyKorean(value) {
+      const text = normalizeName(value).toLowerCase();
+      return ["운영", "운영자", "예", "y", "yes", "true", "1", "admin"].includes(text);
+    }
+
+    async function importMemberDetails(file) {
+      if (!file) return;
+      const text = await file.text();
+      const rows = parseCsv(text).filter((row) => row.some((cell) => normalizeName(cell)));
+      if (rows.length < 2) return toast("업로드할 회원정보가 없습니다.");
+      const headers = rows[0].map((header) => normalizeName(header).replace(/\s+/g, ""));
+      const col = (names) => names.map((name) => headers.indexOf(name)).find((index) => index >= 0);
+      const nameCol = col(["이름", "성명"]);
+      const gradeCol = col(["급수", "레벨"]);
+      const genderCol = col(["성별"]);
+      const birthCol = col(["출생년도", "출생연도", "생년"]);
+      const typeCol = col(["회원구분", "구분"]);
+      const adminCol = col(["운영자구분", "운영자", "운영진"]);
+      if (nameCol === undefined) return toast("이름 열이 필요합니다.");
+
+      const byName = new Map(Object.values(state.members || {}).map((member) => [normalizeName(member.name), member]));
+      const updates = {};
+      let count = 0;
+      rows.slice(1).forEach((row, index) => {
+        const name = normalizeName(row[nameCol]);
+        if (!name) return;
+        const existing = byName.get(name);
+        const id = existing?.id || memberId(`${name}_${Date.now()}_${index}`);
+        const grade = String(row[gradeCol] || existing?.grade || "D").trim().toUpperCase();
+        const gender = normalizeName(row[genderCol] || existing?.gender || "남") === "여" ? "여" : "남";
+        const typeText = normalizeName(row[typeCol] || (existing?.isGuest ? "게스트" : "회원"));
+        const isGuest = /게스트|guest|g/i.test(typeText);
+        const admin = truthyKorean(row[adminCol] || (existing?.admin ? "운영자" : ""));
+        const finance = Boolean(existing?.finance || existing?.financeManager);
+        updates[`members/${id}`] = {
+          ...(existing || {}),
+          id,
+          name,
+          grade,
+          level: grade,
+          gender,
+          birthYear: normalizeName(row[birthCol] || existing?.birthYear || ""),
+          isGuest,
+          guest: isGuest,
+          admin,
+          finance,
+          financeManager: finance,
+          role: admin ? "admin" : finance ? "finance" : "member",
+          status: existing?.status || "DEFAULT",
+          games: Number(existing?.games || 0),
+          createdAt: existing?.createdAt || now(),
+          updatedAt: now()
+        };
+        count += 1;
+      });
+      if (!count) return toast("반영할 회원정보가 없습니다.");
+      if (!confirm(`${count}명의 회원 상세정보를 업로드할까요?`)) return;
+      await dbPatch("/", updates);
+      await loadData();
+      toast(`${count}명 업로드 완료`);
+    }
+
+    function showModal(title, body, actions = []) {
+      const root = $("modalRoot");
+      root.className = "modal-backdrop";
+      root.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-head"><span>${title}</span><button class="modal-close" id="modalClose">×</button></div>
+          <div class="modal-body">${body}</div>
+          <div class="modal-actions" id="modalActions"></div>
+        </div>
+      `;
+      $("modalClose").addEventListener("click", closeModal);
+      const actionRoot = $("modalActions");
+      actions.forEach(([label, fn, kind]) => {
+        const btn = document.createElement("button");
+        btn.className = `action-btn ${kind || ""}`;
+        if (label === "운영진 메뉴") btn.classList.add("admin-back");
+        btn.textContent = label;
+        btn.addEventListener("click", fn);
+        actionRoot.appendChild(btn);
+      });
+    }
+
+    function closeModal() {
+      $("modalRoot").className = "hidden";
+      $("modalRoot").innerHTML = "";
+    }
+
+    let toastTimer = null;
+    function toast(message) {
+      const el = $("toast");
+      el.textContent = message;
+      el.classList.remove("hidden");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.add("hidden"), 2100);
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/`/g, "&#096;");
+    }
+
+    function bindEvents() {
+      $("memberLoginBtn").addEventListener("click", enterAsMember);
+      $("guestLoginBtn").addEventListener("click", () => openGuestModal($("loginName").value));
+      $("loginAdminBtn").addEventListener("click", openAdminModal);
+      $("adminBtn").addEventListener("click", openAdminModal);
+      $("syncBtn").addEventListener("click", refreshData);
+      $("logoutBtn").addEventListener("click", logout);
+      $("restBtn").addEventListener("click", restCurrentUser);
+      $("returnBtn").addEventListener("click", returnCurrentUser);
+      $("startMatchBtn").addEventListener("click", openRaiseModal);
+      $("memberManageBtn").addEventListener("click", openMemberManagement);
+      $("kakaoJoinBtn").addEventListener("click", openKakaoChatRoom);
+      $("partnerPairsBtn").addEventListener("click", () => {
+        if (!state.isAdmin) return toast("운영자 로그인 후 사용할 수 있습니다.");
+        openPartnerPairsModal();
+      });
+      $("filterGenderBtn").addEventListener("click", () => autoMatch("gender"));
+      $("filterMixedBtn").addEventListener("click", () => autoMatch("mixed"));
+      $("filterGradeBtn").addEventListener("click", () => setView("gradeMatch"));
+      $("gradeMatchAutoBtn").addEventListener("click", autoAssignGradeMatch);
+      $("addMemberBtn").addEventListener("click", () => openMemberModal());
+      $("exportBtn").addEventListener("click", exportMembers);
+      $("importBtn").addEventListener("click", () => $("memberImportFile").click());
+      $("memberImportFile").addEventListener("change", async (event) => {
+        await importMemberDetails(event.target.files?.[0]);
+        event.target.value = "";
+      });
+      $("seedBtn").addEventListener("click", async () => {
+        if (!confirm("기본 회원목록 기준으로 누락된 회원만 복원할까요?")) return;
+        await restoreDefaultMembers();
+      });
+      $("memberTabBtn").addEventListener("click", () => {
+        state.memberTab = "member";
+        renderMembers();
+      });
+      $("guestTabBtn").addEventListener("click", () => {
+        state.memberTab = "guest";
+        renderMembers();
+      });
+      $("memberSearch").addEventListener("input", renderMembers);
+      $("memberAdminMenuBtn")?.addEventListener("click", openAdminMenu);
+      $("statPersonalBtn").addEventListener("click", renderStats);
+      $("statGameBtn").addEventListener("click", () => toast("게임별 기록은 게임 종료 데이터 기준으로 집계됩니다."));
+      $("statDailyBtn").addEventListener("click", () => toast("일자별 기록은 선택 기간 기준으로 표시됩니다."));
+      $("statsAdminMenuBtn")?.addEventListener("click", openAdminMenu);
+      $("statStartDate").addEventListener("change", renderStats);
+      $("statEndDate").addEventListener("change", renderStats);
+      $("loginName").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") enterAsMember();
+      });
+      document.querySelectorAll(".nav-btn[data-view]").forEach((btn) => {
+        btn.addEventListener("click", () => setView(btn.dataset.view));
+      });
+    }
+
+    async function init() {
+      bindEvents();
+      const today = new Date();
+      $("statEndDate").value = today.toISOString().slice(0, 10);
+      $("statStartDate").value = today.toISOString().slice(0, 8) + "01";
+      await loadData({ gamesMode: "today" }).catch((error) => {
+        console.error(error);
+        toast("DB 연결을 확인하세요.");
+      });
+      cleanupStaleGames()
+        .then(() => loadData({ gamesMode: "today" }))
+        .catch((error) => console.warn("stale game cleanup failed", error));
+      const savedId = sessionStorage.getItem("clubUserId");
+      if (savedId && state.members[savedId]) {
+        state.currentUser = state.members[savedId];
+        showApp();
+      }
+      state.unsubscribeTimer = setInterval(() => {
+        loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
+      }, 30000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
+
+
+
