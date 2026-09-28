@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -1640,11 +1640,22 @@
       if (token) params.set("auth", token);
       const query = params.toString() ? `?${params.toString()}` : "";
       const { query: _query, ...fetchOptions } = options;
-      const res = await fetch(`${DB_URL}/${cleanPath}.json${query}`, {
-        ...fetchOptions,
-        headers: { "Content-Type": "application/json", ...(fetchOptions.headers || {}) }
-      });
-      if (!res.ok) throw new Error(`DB 오류: ${res.status}`);
+      const url = `${DB_URL}/${cleanPath}.json${query}`;
+      let res;
+      try {
+        res = await fetch(url, {
+          ...fetchOptions,
+          headers: { "Content-Type": "application/json", ...(fetchOptions.headers || {}) }
+        });
+      } catch (networkError) {
+        console.error("DB fetch network error:", url, networkError);
+        throw new Error(`DB 서버에 연결하지 못했습니다 (네트워크 차단/오프라인 가능성). 대상: ${DB_URL}`);
+      }
+      if (!res.ok) {
+        let detail = "";
+        try { detail = await res.text(); } catch (_) {}
+        throw new Error(`DB 오류 ${res.status}${detail ? " - " + detail.slice(0, 200) : ""} (${url})`);
+      }
       return res.json();
     }
 
@@ -1776,14 +1787,32 @@
       toast(`${Object.keys(updates).length}명 복원했습니다.`);
     }
 
+    function showDbError(error) {
+      const message = error?.message || String(error);
+      console.error("DB load failed:", message);
+      const el = $("registeredCount");
+      if (el) {
+        el.innerHTML = `
+          <div style="color:#c0392b; font-weight:700; line-height:1.5;">
+            DB 연결 실패<br>
+            <span style="font-weight:400; font-size:13px;">${escapeHtml(message)}</span><br>
+            <button type="button" id="dbRetryBtn" style="margin-top:8px; padding:6px 16px; border-radius:8px; border:1px solid #c0392b; background:#fff; color:#c0392b; cursor:pointer; font-weight:700;">다시 시도</button>
+          </div>`;
+        $("dbRetryBtn")?.addEventListener("click", () => {
+          el.textContent = "등록 회원 확인 중";
+          loadData({ gamesMode: "today" }).catch(showDbError);
+        });
+      }
+      toast("DB 연결을 확인하세요.");
+    }
+
     async function loadData(options = {}) {
       const { gamesMode = "today" } = options;
       let members;
       try {
         members = await dbGet("members");
       } catch (error) {
-        console.error(error);
-        toast("DB 연결을 확인하세요.");
+        showDbError(error);
         return false;
       }
       if (members === null) members = await seedMembers(false);
@@ -3020,6 +3049,17 @@
             <tbody>${rows.join("")}</tbody>
           </table>` : `<div class="game-history-empty">No games today.</div>`}
       `, [
+        ["대기하기", async () => {
+          Object.keys(state.courtAssignments || {}).forEach((court) => {
+            state.courtAssignments[court] = (state.courtAssignments[court] || []).filter((id) => id !== selectedId);
+            if (!state.courtAssignments[court].length) delete state.courtAssignments[court];
+          });
+          await dbPatch(`members/${selectedId}`, { status: "WAIT", updatedAt: now() });
+          state.selected.clear();
+          closeModal();
+          await loadData();
+          toast(`${member.name}님을 대기 상태로 되돌렸습니다.`);
+        }],
         ["게임제외", () => excludeMemberFromMatching(selectedId)],
         ["퇴장하기", async () => {
           await dbPatch(`members/${selectedId}`, { status: "DEFAULT", updatedAt: now() });
@@ -3510,10 +3550,7 @@
       const today = new Date();
       $("statEndDate").value = today.toISOString().slice(0, 10);
       $("statStartDate").value = today.toISOString().slice(0, 8) + "01";
-      await loadData({ gamesMode: "today" }).catch((error) => {
-        console.error(error);
-        toast("DB 연결을 확인하세요.");
-      });
+      await loadData({ gamesMode: "today" }).catch(showDbError);
       cleanupStaleGames()
         .then(() => loadData({ gamesMode: "today" }))
         .catch((error) => console.warn("stale game cleanup failed", error));
