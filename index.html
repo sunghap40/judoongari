@@ -785,6 +785,11 @@
     .status-toggle.play { color: #e05275; }
     .status-toggle.off { color: #aeb4ba; }
     .status-toggle:hover { background: #eef1f4; }
+    .status-toggle:disabled { opacity: .75; cursor: progress; }
+    .partner-search-grid { margin-bottom: 8px; }
+    .partner-search-grid input { font-size: 15px; }
+    .partner-search-hint { margin: 4px 0 14px; color: #657180; font-size: 12px; }
+
 
     .manage-btn {
       width: 34px;
@@ -1492,8 +1497,6 @@
                   <th>성별</th>
                   <th>급수</th>
                   <th>출석</th>
-                  <th>게임</th>
-                  <th>평균</th>
                   <th>오늘</th>
                 </tr>
               </thead>
@@ -1698,23 +1701,29 @@
       return normalized;
     }
 
+    let crossDayActiveGames = {};
+    let lastCrossDayCheck = 0;
     async function loadTodayGames() {
       const todayKey = new Date().toISOString().slice(0, 10);
       try {
-        let games = await dbQuery("games", {
+        const todayGames = await dbQuery("games", {
           orderBy: JSON.stringify("startedAt"),
           startAt: JSON.stringify(todayKey),
           endAt: JSON.stringify(`${todayKey}\uf8ff`)
-        });
-        // Keep active games visible even when a game crosses the UTC date boundary.
-        const allGames = await dbGet("games").catch(() => ({})) || {};
-        Object.entries(allGames).forEach(([id, game]) => {
-          if (game?.status === "PLAY") (games || (games = {}))[id] = game;
-        });
-        return games || {};
+        }) || {};
+        // Full history is expensive; refresh cross-day active games at most once a minute.
+        if (Date.now() - lastCrossDayCheck > 60000) {
+          const allGames = await dbGet("games").catch(() => null);
+          if (allGames !== null) {
+            crossDayActiveGames = Object.fromEntries(Object.entries(allGames || {}).filter(([id, game]) =>
+              game?.status === "PLAY" && String(game.startedAt || "").slice(0, 10) !== todayKey));
+            lastCrossDayCheck = Date.now();
+          }
+        }
+        return { ...crossDayActiveGames, ...todayGames };
       } catch (error) {
         console.warn("today games query failed", error);
-        return {};
+        return { ...crossDayActiveGames };
       }
     }
 
@@ -1810,21 +1819,24 @@
       const { gamesMode = "today" } = options;
       let members;
       try {
-        members = await dbGet("members");
+        const [rawMembers, games, pairs] = await Promise.all([
+          dbGet("members"),
+          gamesMode === "all" ? dbGet("games").catch(() => ({})) :
+            gamesMode === "today" ? loadTodayGames() : Promise.resolve(null),
+          dbGet("partnerPairs").catch(() => ({}))
+        ]);
+        members = rawMembers;
+        if (members === null) members = await seedMembers(false);
+        state.members = normalizeMembers(members || {});
+        if (gamesMode !== "none") {
+          state.games = games || {};
+          state.gamesLoadedAll = gamesMode === "all";
+        }
+        state.partnerPairs = pairs || {};
       } catch (error) {
         showDbError(error);
         return false;
       }
-      if (members === null) members = await seedMembers(false);
-      state.members = normalizeMembers(members || {});
-      if (gamesMode === "all") {
-        state.games = await dbGet("games").catch(() => ({})) || {};
-        state.gamesLoadedAll = true;
-      } else if (gamesMode === "today") {
-        state.games = await loadTodayGames();
-        state.gamesLoadedAll = false;
-      }
-      state.partnerPairs = await dbGet("partnerPairs").catch(() => ({})) || {};
       renderAll();
       return true;
     }
@@ -1976,13 +1988,24 @@
       return ids;
     }
 
+    let todayCountSource = null;
+    let todayCountDate = "";
+    let todayCountCache = new Map();
     function todayGameCount(memberId) {
       const todayKey = new Date().toISOString().slice(0, 10);
-      return Object.values(state.games || {}).filter((game) => {
-        const playedToday = String(game.startedAt || game.endedAt || "").slice(0, 10) === todayKey ||
-          String(game.endedAt || game.startedAt || "").slice(0, 10) === todayKey;
-        return playedToday && Array.isArray(game.players) && game.players.includes(memberId);
-      }).length;
+      if (todayCountSource !== state.games || todayCountDate !== todayKey) {
+        todayCountSource = state.games;
+        todayCountDate = todayKey;
+        todayCountCache = new Map();
+        Object.values(state.games || {}).forEach((game) => {
+          if (!Array.isArray(game.players)) return;
+          const isToday = String(game.startedAt || game.endedAt || "").slice(0, 10) === todayKey ||
+            String(game.endedAt || game.startedAt || "").slice(0, 10) === todayKey;
+          if (!isToday) return;
+          game.players.forEach((id) => todayCountCache.set(id, (todayCountCache.get(id) || 0) + 1));
+        });
+      }
+      return todayCountCache.get(memberId) || 0;
     }
 
     function playerCard(member, selectable = true) {
@@ -2325,11 +2348,11 @@
         const tr = document.createElement("tr");
         const attendance = memberMonthlyAttendance(m.id);
         if (!m.isGuest && attendance === 0) tr.classList.add("member-no-attendance");
-        const statusIcon = m.status === "WAIT" ? "Ⅱ" : m.status === "PLAY" ? "▶" : "■";
+        const statusIcon = m.status === "WAIT" || m.status === "PLAY" ? "Ⅱ" : "■";
         tr.innerHTML = `
           <td class="name ${m.admin ? "member-admin-name" : m.isGuest ? "member-guest-name" : "member-normal-name"}">
             <span class="member-name-cell">
-              <button class="status-toggle ${m.status === "PLAY" ? "play" : m.status === "DEFAULT" ? "off" : ""}" data-status="${m.id}" title="상태 변경">${statusIcon}</button>
+              <button class="status-toggle ${m.status === "WAIT" || m.status === "PLAY" ? "" : "off"}" data-status="${escapeAttr(m.id)}" title="대기/미입장 상태 변경" aria-label="${escapeAttr(m.name)} 상태 변경">${statusIcon}</button>
               <span class="member-name-text">${escapeHtml(m.name)}${m.admin ? " <span class='admin-badge'>운영</span>" : ""}</span>
             </span>
           </td>
@@ -2350,13 +2373,40 @@
       }
     }
 
+    const pendingStatusChanges = new Set();
     async function toggleMemberStatus(id) {
       const member = state.members[id];
-      if (!member) return;
-      const nextStatus = member.status === "DEFAULT" ? "WAIT" : member.status === "WAIT" ? "PLAY" : "DEFAULT";
-      await dbPatch(`members/${id}`, { status: nextStatus, updatedAt: now() });
-      await loadData();
-      toast(`${member.name} 상태가 ${nextStatus}(으)로 변경되었습니다.`);
+      if (!member || pendingStatusChanges.has(id)) return;
+      const previousStatus = member.status;
+      const nextStatus = previousStatus === "WAIT" || previousStatus === "PLAY" ? "DEFAULT" : "WAIT";
+      const timestamp = now();
+      pendingStatusChanges.add(id);
+      // Update only the affected row immediately. Avoid a full network reload on each tap.
+      member.status = nextStatus;
+      member.updatedAt = timestamp;
+      const button = Array.from(document.querySelectorAll("#memberRows [data-status]"))
+        .find((item) => item.dataset.status === id);
+      if (button) {
+        button.textContent = nextStatus === "WAIT" ? "Ⅱ" : "■";
+        button.classList.toggle("off", nextStatus === "DEFAULT");
+        button.classList.remove("play");
+        button.disabled = true;
+      }
+      try {
+        await dbPatch(`members/${id}`, { status: nextStatus, updatedAt: timestamp });
+        toast(`${member.name} 상태: ${nextStatus}`);
+      } catch (error) {
+        member.status = previousStatus;
+        if (button) {
+          button.textContent = previousStatus === "DEFAULT" ? "■" : "Ⅱ";
+          button.classList.toggle("off", previousStatus === "DEFAULT");
+        }
+        console.error("상태 변경 실패", error);
+        toast("상태 저장에 실패했습니다. 다시 시도하세요.");
+      } finally {
+        pendingStatusChanges.delete(id);
+        if (button) button.disabled = false;
+      }
     }
 
     function ageBand(birthYear) {
@@ -2373,22 +2423,31 @@
       return { start, end, monthKey: end.slice(0, 7) };
     }
 
+    let attendanceCacheGames = null;
+    let attendanceCacheRange = "";
+    let attendanceCounts = new Map();
     function memberMonthlyAttendance(memberId) {
       const { start, end, monthKey } = selectedStatsRange();
-      const dates = new Set();
-      Object.values(state.games || {}).forEach((game) => {
-        if (!Array.isArray(game.players) || !game.players.includes(memberId)) return;
-        const gameDate = String(game.startedAt || game.endedAt || "").slice(0, 10);
-        if (!gameDate || !gameDate.startsWith(monthKey)) return;
-        if (gameDate < start || gameDate > end) return;
-        dates.add(gameDate);
-      });
-      const member = state.members[memberId];
-      const updatedDate = String(member?.updatedAt || "").slice(0, 10);
-      if (member && member.status !== "DEFAULT" && updatedDate.startsWith(monthKey) && updatedDate >= start && updatedDate <= end) {
-        dates.add(updatedDate);
+      const key = `${start}|${end}|${monthKey}`;
+      if (attendanceCacheGames !== state.games || attendanceCacheRange !== key) {
+        attendanceCacheGames = state.games;
+        attendanceCacheRange = key;
+        const datesByMember = new Map();
+        Object.values(state.games || {}).forEach((game) => {
+          const date = String(game.startedAt || game.endedAt || "").slice(0, 10);
+          if (!Array.isArray(game.players) || !date.startsWith(monthKey) || date < start || date > end) return;
+          game.players.forEach((id) => {
+            if (!datesByMember.has(id)) datesByMember.set(id, new Set());
+            datesByMember.get(id).add(date);
+          });
+        });
+        attendanceCounts = datesByMember;
       }
-      return dates.size;
+      const dates = attendanceCounts.get(memberId);
+      const updatedDate = String(state.members[memberId]?.updatedAt || "").slice(0, 10);
+      const hasCurrentDay = state.members[memberId]?.status !== "DEFAULT" &&
+        updatedDate.startsWith(monthKey) && updatedDate >= start && updatedDate <= end;
+      return (dates?.size || 0) + (hasCurrentDay && !dates?.has(updatedDate) ? 1 : 0);
     }
 
     function renderStats() {
@@ -2403,7 +2462,6 @@
           .slice(0, 80)
           .forEach((m, index) => {
             const attendance = memberMonthlyAttendance(m.id);
-            const games = Number(m.games || 0);
             const today = todayGameCount(m.id);
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -2413,8 +2471,6 @@
               <td>${escapeHtml(m.gender)}</td>
               <td>${escapeHtml(m.grade)}</td>
               <td>${attendance}</td>
-              <td>${games}</td>
-              <td>${attendance ? Math.round(games / attendance) : 0}</td>
               <td>${today}</td>
             `;
             rows.appendChild(tr);
@@ -2470,11 +2526,14 @@
       ]);
     }
     function renderAll() {
-      renderWaiting();
-      renderPlaying();
-      renderGradeMatch();
-      renderMembers();
-      renderStats();
+      if (state.view === "waiting") renderWaiting();
+      else if (state.view === "playing") renderPlaying();
+      else if (state.view === "gradeMatch") renderGradeMatch();
+      else if (state.view === "members") renderMembers();
+      else if (state.view === "stats") renderStats();
+      // Login count is also needed when the stats view is not visible.
+      const list = Object.values(state.members || {});
+      $("registeredCount").textContent = `회원 ${list.filter((m) => !m.isGuest).length}명 · 게스트 ${list.filter((m) => m.isGuest).length}명`;
     }
 
     function openAdminModal(targetView = "") {
@@ -2609,9 +2668,23 @@
       toast("대기화면 전체 퇴장 처리했습니다.");
     }
 
+    function partnerSearchField(id, label, members) {
+      const options = members.map((member) => `<option value="${escapeAttr(member.name)}${member.isGuest ? " (게스트)" : ""} · ${escapeAttr(member.grade)} · ${escapeAttr(member.gender)} [${escapeAttr(member.id)}]"></option>`).join("");
+      return `<div class="field"><label for="${id}">${label}</label>
+        <input id="${id}" type="search" list="${id}Options" autocomplete="off" placeholder="이름으로 검색" aria-label="${label} 검색">
+        <datalist id="${id}Options">${options}</datalist></div>`;
+    }
+
+    function selectedPartnerMemberId(fieldId) {
+      const value = $(fieldId)?.value.trim() || "";
+      const match = value.match(/\[([^\]]+)\]$/);
+      if (match && state.members[match[1]]) return match[1];
+      const matches = memberList().filter((m) => m.name === value);
+      return matches.length === 1 ? matches[0].id : "";
+    }
+
     function openPartnerPairsModal() {
       const members = memberList();
-      const options = members.map((member) => `<option value="${escapeAttr(member.id)}">${escapeHtml(member.name)}${member.isGuest ? " (게스트)" : ""} · ${escapeHtml(member.grade)} · ${escapeHtml(member.gender)}</option>`).join("");
       const pairRows = Object.entries(state.partnerPairs || {}).map(([id, pair]) => {
         const a = state.members[pair.a];
         const b = state.members[pair.b];
@@ -2625,10 +2698,11 @@
         `;
       }).join("");
       showModal("파트너 묶음", `
-        <div class="form-grid">
-          <div class="field"><label>선수 1</label><select id="pairA">${options}</select></div>
-          <div class="field"><label>선수 2</label><select id="pairB">${options}</select></div>
+        <div class="form-grid partner-search-grid">
+          ${partnerSearchField("pairA", "선수 1", members)}
+          ${partnerSearchField("pairB", "선수 2", members)}
         </div>
+        <p class="partner-search-hint">이름을 입력하고 검색 결과에서 회원을 선택하세요.</p>
         <div class="modal-table-scroll">
           <table class="stats-table">
             <thead><tr><th>선수 1</th><th>선수 2</th><th>삭제</th></tr></thead>
@@ -2646,16 +2720,23 @@
     }
 
     async function addPartnerPair() {
-      const a = $("pairA").value;
-      const b = $("pairB").value;
-      if (!a || !b || a === b) return toast("서로 다른 2명을 선택하세요.");
+      const a = selectedPartnerMemberId("pairA");
+      const b = selectedPartnerMemberId("pairB");
+      if (!a || !b || a === b) return toast("검색 결과에서 서로 다른 회원 2명을 선택하세요.");
       const already = Object.values(state.partnerPairs || {}).some((pair) => pair && ([pair.a, pair.b].includes(a) || [pair.a, pair.b].includes(b)));
       if (already) return toast("이미 파트너 묶음에 포함된 회원입니다.");
       const id = `pair_${Date.now()}`;
-      await dbPut(`partnerPairs/${id}`, { id, a, b, createdAt: now() });
-      await loadData();
+      const pair = { id, a, b, createdAt: now() };
+      state.partnerPairs[id] = pair;
       openPartnerPairsModal();
-      toast("파트너 묶음을 추가했습니다.");
+      try {
+        await dbPut(`partnerPairs/${id}`, pair);
+        toast("파트너 묶음을 추가했습니다.");
+      } catch (error) {
+        delete state.partnerPairs[id];
+        openPartnerPairsModal();
+        toast("파트너 묶음 저장에 실패했습니다.");
+      }
     }
 
     async function deletePartnerPair(id) {
@@ -3560,6 +3641,7 @@
         showApp();
       }
       state.unsubscribeTimer = setInterval(() => {
+        if (document.hidden || pendingStatusChanges.size || $("modalRoot").className !== "hidden") return;
         loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
       }, 30000);
     }
