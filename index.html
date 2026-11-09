@@ -752,6 +752,43 @@
       text-overflow: ellipsis;
     }
 
+    .member-head-cell {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+
+    .member-head-layout {
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      grid-template-rows: auto auto;
+      align-items: end;
+      gap: 2px 8px;
+      width: 100%;
+    }
+
+    .member-head-manual {
+      grid-column: 1;
+      grid-row: 1;
+      font-size: 11px;
+      font-weight: 800;
+      color: #67727d;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .member-head-label {
+      grid-column: 2;
+      grid-row: 2;
+      text-align: left;
+      color: #555;
+      font-weight: 800;
+    }
+
+    body.theme-dark .member-head-manual,
+    body.theme-dark .member-head-label {
+      color: #d7dee8;
+    }
+
     .member-wait { color: #3f4750; }
     .member-muted { color: #3f4750; }
     .member-normal-name { color: #3f4750 !important; }
@@ -1367,6 +1404,91 @@
       text-align: left;
       backdrop-filter: blur(12px);
     }
+
+    /* Beginner-friendly shell: existing data and game engine remain unchanged. */
+    .app { background: #f1f5f4; }
+    .topbar { min-height: 62px; padding: 12px 18px; background: #fff; backdrop-filter: none; }
+    .topbar-title { color: #165d46; font-size: 20px; }
+    .top-actions .mini-btn { min-height: 42px; min-width: 42px; border-radius: 12px; }
+    .content { width: min(100%, 1000px); margin: 0 auto; padding: 16px 14px calc(104px + env(safe-area-inset-bottom, 0px)); }
+    .home-view { display: grid; gap: 14px; align-content: start; }
+    .home-intro { background: linear-gradient(128deg,#106c50,#185e8c); color: #fff; border-radius: 22px; padding: 21px 19px; box-shadow: 0 10px 25px rgba(6,63,66,.13); }
+    .home-intro-top,.panel-title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .home-eyebrow { font-size:12px; font-weight:800; letter-spacing:.02em; color:#d7f6e9; }
+    .help-pill { min-height:37px; padding:7px 12px; border-radius:999px; background:#ffffff25; color:#fff; border:1px solid #ffffff55; font-weight:850; }
+    .home-intro h1 { margin: 12px 0 5px; font-size:clamp(23px,5.3vw,29px); line-height:1.3; letter-spacing:-.05em; }
+    .home-intro p { margin: 0; font-size:14px; color:#e2faf3; }
+    .home-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:19px; }
+    .home-metrics>div { border:1px solid #ffffff30; background:#ffffff18; border-radius:13px; padding:12px 5px; display:grid; justify-items:center; gap:3px; }
+    .home-metrics strong { font-size:clamp(24px,6vw,32px); color:#fff; font-variant-numeric:tabular-nums; }
+    .home-metrics span { font-size:12px; font-weight:800; color:#e8faf4; }
+    .home-panel { padding:18px; border:1px solid #e2eae6; border-radius:19px; background:#fff; box-shadow:0 5px 18px rgba(28,69,69,.045); min-width:0; }
+    .home-panel h2 { margin:0; font-size:19px; font-weight:900; color:#203b39; letter-spacing:-.035em; }
+    .panel-subtitle { margin:9px 0 14px; color:#61726d; font-size:13px; line-height:1.55; }
+    .step-tag { color:#236e51; font-size:12px; font-weight:900; background:#e8f5ee; padding:7px 9px; border-radius:100px; white-space:nowrap; }
+    .state-pill { padding:7px 12px; background:#e7f5ee; color:#126f4e; border-radius:100px; font-size:13px; font-weight:900; }
+    .state-pill.is-away { background:#eef1f4; color:#687584; }
+    .home-personal .home-two-actions:has(.home-action.hidden) { grid-template-columns:1fr; }
+    .home-two-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    .home-action { min-height:50px; padding:11px 10px; border-radius:12px; font-size:15px; font-weight:900; white-space:normal; line-height:1.25; }
+    .home-action-muted { background:#f0f4f2; color:#34584e; }
+    .home-action-light { background:#dcf4e5; color:#15633e; }
+    .home-action-outline { background:#fff; color:#1e594b; border:1.5px solid #d1e4d9; }
+    .big-cta { min-height:93px; width:100%; border-radius:16px; background:#126e4e; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; box-shadow:0 7px 16px rgba(10,103,72,.18); }
+    .big-cta>span { font-size:21px; font-weight:1000; }
+    .big-cta small { font-size:12px; font-weight:700; color:#e2f7e9; }
+    .secondary-actions { margin-top:10px; }
+    .easy-courts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .easy-court { min-width:0; padding:15px 12px; border-radius:14px; background:#f1f8f4; border:1px solid #dcece1; display:grid; gap:6px; }
+    .easy-court.is-playing { background:#edf5ff; border-color:#d8e8fc; }
+    .easy-court.is-ready { background:#fff8e8; border-color:#f2dfaf; }
+    .easy-court h3 { font-size:16px; font-weight:950; color:#244b40; margin:0; }
+    .easy-court small { color:#61736f; font-size:12px; line-height:1.4; overflow-wrap:anywhere; }
+    .easy-court .court-status { font-weight:900; font-size:14px; color:#176747; }
+    .easy-court.is-playing .court-status { color:#1763a3; }
+    .easy-court.is-ready .court-status { color:#956400; }
+    .easy-court button { min-height:42px; border-radius:9px; background:#166a50; color:white; font-weight:900; margin-top:3px; }
+    .easy-court.is-playing button { background:#245d91; }
+    .easy-court .court-hint { color:#73827e; font-weight:750; font-size:12px; padding-top:4px; }
+    .reveal-details { margin-top:12px; border:1px solid #dae4de; border-radius:13px; background:#fff; overflow:hidden; }
+    .reveal-details>summary { cursor:pointer; min-height:49px; padding:14px; display:flex; gap:8px; align-items:center; justify-content:space-between; font-size:14px; font-weight:900; color:#46675d; list-style:none; }
+    .reveal-details>summary::-webkit-details-marker { display:none; }
+    .reveal-details>summary>span { color:#67827a; font-size:12px; }
+    .reveal-details[open]>summary { background:#eff6f2; border-bottom:1px solid #e0eae4; }
+    .reveal-details[open]>summary>span { font-size:0; }
+    .reveal-details[open]>summary>span:after { content:'접기';font-size:12px; }
+    .reveal-details .court-grid { border:0; border-radius:0; box-shadow:none; }
+    .waiting-strip { border-top:none; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); }
+    .waiting-strip:empty:after { content:'현재 대기 중인 회원이 없습니다.'; color:#7b8580; padding:14px; font-size:14px; grid-column:1/-1; }
+    .advanced-tools { margin-top:0; }
+    .advanced-tools .match-toolbar { margin:0; border:0; box-shadow:none; border-radius:0; background:#fff; }
+    .tools-caption { margin:4px 0 7px; color:#73827a; font-size:12px; }
+    .advanced-tools .toolbar-row-top { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .advanced-tools .mini-btn { min-height:47px; padding:8px 5px; white-space:normal; font-size:13px; }
+    .member-simple-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; padding:14px 10px 8px; background:#fff; }
+    .member-simple-toolbar label { font-size:13px; font-weight:900; grid-column:1/-1; }
+    .member-simple-toolbar .search { border:1px solid #d6e3dc; border-radius:12px; min-height:50px; height:50px; font-size:16px; background:#fff; }
+    .member-simple-toolbar .home-action { min-height:50px; }
+    .member-more-tools { margin:0 10px 12px; }
+    .member-more-tools .member-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .member-more-tools .member-toolbar .toolbar-btn { min-height:43px; white-space:normal; }
+    .member-tabs { border-radius:15px 15px 0 0; }
+    .member-tab-btn { min-height:44px; }
+    .bottom-nav { grid-template-columns:repeat(4,minmax(0,1fr)); min-height:calc(68px + env(safe-area-inset-bottom,0px)); backdrop-filter:none; }
+    .nav-btn { min-height:66px; font-size:12px; }
+    .nav-icon { font-size:26px; }
+    .nav-btn.active { color:#116647; }
+    .home-action:focus-visible, .big-cta:focus-visible, .nav-btn:focus-visible, .easy-court button:focus-visible, .reveal-details summary:focus-visible { outline:3px solid #008dce; outline-offset:2px; }
+    body.theme-dark .home-panel, body.theme-dark .reveal-details { background:#182532; border-color:#344454; }
+    body.theme-dark .home-panel h2 { color:#ecf3f6; }
+    body.theme-dark .panel-subtitle,body.theme-dark .easy-court small { color:#bfcbd2; }
+    body.theme-dark .easy-court { background:#20352f;border-color:#34584c; }
+    body.theme-dark .easy-court.is-playing { background:#203448; }
+    body.theme-dark .easy-court.is-ready { background:#453a20; }
+    body.theme-dark .easy-court h3 { color:#e6edf5; }
+    @media (min-width:720px) { .home-view { grid-template-columns:repeat(2,minmax(0,1fr)); } .home-intro { grid-column:1/-1; } .advanced-tools { grid-column:1/-1; } }
+    @media (max-width:410px) { .content { padding:10px 9px 102px; } .home-panel { padding:13px; } .home-intro { padding:18px 14px; } .home-action { font-size:13px; padding:10px 5px; } .big-cta>span {font-size:19px;} .easy-court { padding:12px 8px; } .member-simple-toolbar { grid-template-columns:1fr; } .member-simple-toolbar label {grid-column:1;} }
+
   </style>
 </head>
 <body>
@@ -1399,25 +1521,62 @@
     </header>
 
     <main class="content">
-      <section id="waitingView" class="view">
-        <div class="match-toolbar">
-          <div class="toolbar-row toolbar-row-top">
-            <button id="startMatchBtn" class="mini-btn start-game toolbar-start">▲ 올리기</button>
-            <button id="memberManageBtn" class="mini-btn member-manage-btn" type="button">회원관리</button>
-            <button id="kakaoJoinBtn" class="mini-btn kakao-join-btn">💬 카톡입장</button>
+      <section id="waitingView" class="view home-view">
+        <div class="home-intro">
+          <div class="home-intro-top"><span class="home-eyebrow">우리 클럽 오늘의 현황</span><button id="helpBtn" type="button" class="help-pill">? 사용법</button></div>
+          <h1 id="homeGreeting">함께 즐거운 경기해요! 🏸</h1>
+          <p>처음이신가요? 아래 큰 버튼부터 눌러 보세요.</p>
+          <div class="home-metrics" aria-label="오늘의 인원 현황">
+            <div><strong id="metricAttending">0</strong><span>참석 인원</span></div>
+            <div><strong id="metricPlaying">0</strong><span>경기 중</span></div>
+            <div><strong id="metricWaiting">0</strong><span>대기 인원</span></div>
           </div>
-          <div class="toolbar-row toolbar-row-match">
-            <button id="filterGenderBtn" class="mini-btn">남복여복</button>
-            <button id="filterMixedBtn" class="mini-btn">혼복</button>
-            <button id="filterGradeBtn" class="mini-btn">급수 매칭</button>
+        </div>
+        <section class="home-panel home-personal" aria-label="내 상태">
+          <div class="panel-title-row"><h2>🙋 내 상태</h2><span id="homeMyStatus" class="state-pill">상태 확인 중</span></div>
+          <p id="homeMyDescription" class="panel-subtitle">내 상태를 확인해 주세요.</p>
+          <div class="home-two-actions">
+            <button id="restBtn" type="button" class="home-action home-action-muted">☕ 잠시 휴식하기</button>
+            <button id="returnBtn" type="button" class="home-action home-action-light">▶ 경기 대기하기</button>
           </div>
-          <div class="toolbar-row toolbar-row-actions">
-            <button id="partnerPairsBtn" class="mini-btn">파트너고정</button>
-            <button id="restBtn" class="mini-btn">Ⅱ 휴식하기</button>
-            <button id="returnBtn" class="mini-btn">▶ 복귀하기</button>
+        </section>
+        <section class="home-panel" aria-label="경기 만들기">
+          <div class="panel-title-row"><h2>🏸 경기 만들기</h2><span class="step-tag">1단계</span></div>
+          <p class="panel-subtitle">경기 방식을 선택하면 대기 회원을 자동으로 골라 줍니다.</p>
+          <button id="quickMatchBtn" type="button" class="big-cta"><span>＋ 새 경기 만들기</span><small>남복·여복 / 혼복 / 급수별 매칭</small></button>
+          <div class="home-two-actions secondary-actions">
+            <button id="manualAssignBtn" type="button" class="home-action home-action-outline">👆 직접 선수 배정</button>
+            <button id="partnerPairsBtn" type="button" class="home-action home-action-outline">🤝 파트너 고정</button>
           </div>
-        </div>        <div class="court-grid" id="courtGrid"></div>
-        <div class="waiting-strip" id="waitingList"></div>
+        </section>
+        <section class="home-panel" aria-label="코트 현황">
+          <div class="panel-title-row"><h2>🏟 코트 현황</h2><span class="step-tag">2단계</span></div>
+          <p class="panel-subtitle">선수가 4명 배정된 코트는 ‘경기 시작’을 누르세요.</p>
+          <div id="easyCourts" class="easy-courts"></div>
+          <details id="courtDetails" class="reveal-details"><summary>코트 전체 배치·대기 코트 보기 <span>펼치기</span></summary>
+            <div class="court-grid" id="courtGrid"></div>
+          </details>
+        </section>
+        <section class="home-panel" aria-label="대기 회원">
+          <div class="panel-title-row"><h2>👥 대기 회원</h2><span class="step-tag">3단계</span></div>
+          <p class="panel-subtitle">이름을 누르면 원하는 코트에 직접 배정할 수 있습니다.</p>
+          <div class="waiting-strip" id="waitingList"></div>
+        </section>
+        <details class="reveal-details advanced-tools" id="advancedTools"><summary>⚙ 추가 경기 기능 및 관리 <span>펼치기</span></summary>
+          <div class="match-toolbar">
+            <p class="tools-caption">기존 기능도 그대로 사용할 수 있습니다.</p>
+            <div class="toolbar-row toolbar-row-top">
+              <button id="startMatchBtn" class="mini-btn start-game toolbar-start">▲ 대기팀 올리기</button>
+              <button id="memberManageBtn" class="mini-btn member-manage-btn" type="button">회원관리</button>
+              <button id="kakaoJoinBtn" class="mini-btn kakao-join-btn">💬 카톡입장</button>
+            </div>
+            <div class="toolbar-row toolbar-row-match">
+              <button id="filterGenderBtn" class="mini-btn">남복·여복 자동배정</button>
+              <button id="filterMixedBtn" class="mini-btn">혼복 자동배정</button>
+              <button id="filterGradeBtn" class="mini-btn">급수 매칭</button>
+            </div>
+          </div>
+        </details>
       </section>
 
       <section id="playingView" class="view hidden">
@@ -1448,20 +1607,25 @@
             <button id="memberTabBtn" class="member-tab-btn active" type="button">회원</button>
             <button id="guestTabBtn" class="member-tab-btn" type="button">게스트 회원</button>
           </div>
-          <div class="member-toolbar">
-            <button id="addMemberBtn" class="toolbar-btn">+ 추가</button>
-            <button id="exportBtn" class="toolbar-btn">상세 다운로드</button>
-            <button id="importBtn" class="toolbar-btn">상세 업로드</button>
-            <button id="seedBtn" class="toolbar-btn">⇧</button>
-            <button id="memberAdminMenuBtn" class="toolbar-btn admin-menu-toolbar">운영진 메뉴</button>
-            <input id="memberImportFile" class="hidden" type="file" accept=".csv,text/csv">
-            <input id="memberSearch" class="search" type="search" placeholder="검색">
+          <div class="member-simple-toolbar">
+            <label for="memberSearch">🔎 이름으로 회원 찾기</label>
+            <input id="memberSearch" class="search" type="search" placeholder="이름 입력 → 바로 검색" autocomplete="off">
+            <button id="addMemberBtn" class="home-action home-action-light" type="button">＋ 새 회원 등록</button>
           </div>
+          <details class="reveal-details member-more-tools"><summary>회원 데이터 관리·운영진 기능 <span>펼치기</span></summary>
+            <div class="member-toolbar">
+              <button id="exportBtn" class="toolbar-btn">상세 다운로드</button>
+              <button id="importBtn" class="toolbar-btn">상세 업로드</button>
+              <button id="seedBtn" class="toolbar-btn" title="기본 회원 복원">기본 회원 복원</button>
+              <button id="memberAdminMenuBtn" class="toolbar-btn admin-menu-toolbar">운영진 메뉴</button>
+              <input id="memberImportFile" class="hidden" type="file" accept=".csv,text/csv">
+            </div>
+          </details>
           <div class="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>이름 / 상태</th>
+                  <th class="member-head-cell"><div class="member-head-layout"><span class="member-head-manual">수동입장</span><span class="member-head-label">이름 / 상태</span></div></th>
                   <th>급수</th>
                   <th>성별</th>
                   <th>관리</th>
@@ -1507,9 +1671,11 @@
       </section>
     </main>
 
-    <nav class="bottom-nav">
-      <button class="nav-btn active" data-view="waiting"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span>게임현황</span></button>
-      <button id="logoutBtn" class="nav-btn"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7M6 10v10h12V10"/></svg></span><span>퇴장하기</span></button>
+    <nav class="bottom-nav" aria-label="기본 메뉴">
+      <button class="nav-btn active" data-view="waiting" type="button"><span class="nav-icon">⌂</span><span>홈</span></button>
+      <button id="bottomMembersBtn" class="nav-btn" type="button"><span class="nav-icon">♙</span><span>회원관리</span></button>
+      <button id="bottomAdminBtn" class="nav-btn" type="button"><span class="nav-icon">☷</span><span>전체 메뉴</span></button>
+      <button id="logoutBtn" class="nav-btn" type="button"><span class="nav-icon">⇥</span><span>퇴장</span></button>
     </nav>
   </section>
 
@@ -1933,6 +2099,85 @@
       toast("회원이 정상적으로 퇴장 되었습니다.");
     }
 
+    function openBeginnerHelp() {
+      showModal("처음 사용하시나요?", `
+        <div class="beginner-help" style="display:grid;gap:15px;line-height:1.6;font-size:15px">
+          <div><strong>① 입장 확인</strong><div>홈 화면에서 내 상태가 '경기 대기 중'인지 확인합니다. 잠깐 쉴 때만 '휴식하기'를 누르세요.</div></div>
+          <div><strong>② 경기 만들기</strong><div>'새 경기 만들기'에서 남복·여복, 혼복, 급수 매칭을 선택합니다. 직접 지정하려면 대기 회원 이름을 누르세요.</div></div>
+          <div><strong>③ 경기 시작</strong><div>코트에 4명이 모이면 해당 코트의 '경기 시작' 버튼을 누릅니다. 경기 후에는 같은 자리에서 '경기 종료'를 누르세요.</div></div>
+          <div><strong>운영진 기능</strong><div>화면 아래 '회원관리'와 '전체 메뉴'에서 회비·통계·파트너 고정·회원 등록 등을 사용할 수 있습니다.</div></div>
+        </div>
+      `, [["확인했어요", closeModal, "confirm"]]);
+    }
+
+    function openQuickMatch() {
+      if (!state.isAdmin) return openAdminModal();
+      showModal("새 경기 만들기", `
+        <p style="margin:0 0 12px;color:#52605b;line-height:1.6">경기 방식을 고르세요. 대기 중인 4명을 비어 있는 코트에 배정합니다. 배정 후 코트의 <strong>경기 시작</strong>을 눌러 주세요.</p>
+        <div class="admin-menu">
+          <button type="button" class="admin-menu-btn" id="quickSame">🏸 남복 또는 여복 자동 배정</button>
+          <button type="button" class="admin-menu-btn" id="quickMixed">🤝 혼합복식 자동 배정</button>
+          <button type="button" class="admin-menu-btn" id="quickGrade">🎯 같은 급수 회원으로 배정</button>
+          <button type="button" class="admin-menu-btn" id="quickManual">👆 이름을 눌러 직접 배정</button>
+        </div>
+      `, [["닫기",closeModal]]);
+      $("quickSame").addEventListener("click", () => { closeModal(); autoMatch("gender"); });
+      $("quickMixed").addEventListener("click", () => { closeModal(); autoMatch("mixed"); });
+      $("quickGrade").addEventListener("click", () => { closeModal(); setView("gradeMatch"); });
+      $("quickManual").addEventListener("click", () => { closeModal(); openManualAssign(); });
+    }
+
+    function openManualAssign() {
+      if (!state.isAdmin) return openAdminModal();
+      setView("waiting");
+      $("courtDetails").open = true;
+      $("waitingList").scrollIntoView({behavior:"smooth",block:"center"});
+      toast("아래 대기 회원 이름을 눌러 원하는 코트에 배정하세요.");
+    }
+
+    function renderBeginnerHome() {
+      if (!$('easyCourts')) return;
+      const members = Object.values(state.members || {});
+      const attending = members.filter(m => ["WAIT","PLAY","EXCLUDED"].includes(m.status)).length;
+      const playing = members.filter(m => m.status === "PLAY").length;
+      const assigned = assignedPlayerIds();
+      const waiting = members.filter(m => m.status === "WAIT" && !assigned.has(m.id)).length;
+      $("metricAttending").textContent = attending;
+      $("metricPlaying").textContent = playing;
+      $("metricWaiting").textContent = waiting;
+      const id = sessionStorage.getItem("clubUserId");
+      const me = state.members[id];
+      if (me) {
+        $("homeGreeting").textContent = `${me.name}님, 즐거운 경기하세요! 🏸`;
+        const label = me.status === "PLAY" ? "경기 중" : me.status === "WAIT" ? "경기 대기 중" : me.status === "EXCLUDED" ? "매칭 제외" : "휴식·미입장";
+        $("homeMyStatus").textContent = label;
+        $("homeMyStatus").classList.toggle("is-away", me.status === "DEFAULT" || me.status === "EXCLUDED");
+        $("homeMyDescription").textContent = me.status === "PLAY" ? "현재 경기 중입니다. 종료 후 대기하거나 쉬실 수 있습니다." : me.status === "WAIT" ? "현재 경기 배정을 기다리고 있습니다." : me.status === "EXCLUDED" ? "매칭에서 제외된 상태입니다. 운영진에게 복귀를 요청하세요." : "경기에 참여하려면 경기 대기하기를 누르세요.";
+        $("restBtn").classList.toggle("hidden", me.status === "DEFAULT" || me.status === "EXCLUDED" || me.status === "PLAY");
+        $("returnBtn").classList.toggle("hidden", me.status === "WAIT" || me.status === "PLAY" || me.status === "EXCLUDED");
+      } else {
+        $("homeGreeting").textContent = "함께 즐거운 경기해요! 🏸";
+        $("homeMyStatus").textContent = "회원 확인 필요";
+        $("homeMyDescription").textContent = "입장 후 내 상태를 확인할 수 있습니다.";
+        $("restBtn").classList.add("hidden");
+        $("returnBtn").classList.add("hidden");
+      }
+      const gamesByCourt = new Map(activeGames().map(g=>[Number(g.court),g]));
+      const html = GAME_COURTS.map(court=>{
+        const game = gamesByCourt.get(court);
+        const ids = state.courtAssignments?.[court] || [];
+        const ready = !game && ids.length === 4;
+        const names = (game ? game.players : ids).map(id => state.members[id]?.name).filter(Boolean);
+        const status = game ? "경기 중" : ready ? "시작 준비 완료" : ids.length ? `${ids.length}/4명 배정` : "비어 있음";
+        const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>` : ready ? `<button type="button" data-easy-start="${court}">▶ 경기 시작</button>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
+        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><h3>${court}번 코트</h3><span class="court-status">${status}</span><small>${names.length ? escapeHtml(names.join(" · ")) : "배정된 선수가 없습니다."}</small>${button}</div>`;
+      }).join("");
+      const root = $("easyCourts");
+      root.innerHTML = html;
+      root.querySelectorAll('[data-easy-start]').forEach(btn=>btn.addEventListener('click',()=>startAssignedGame(Number(btn.dataset.easyStart))));
+      root.querySelectorAll('[data-easy-end]').forEach(btn=>btn.addEventListener('click',()=>finishGame(btn.dataset.easyEnd)));
+    }
+
     function showApp() {
       $("loginPage").classList.add("hidden");
       $("appPage").classList.remove("hidden");
@@ -1952,12 +2197,13 @@
         btn.classList.toggle("active", btn.dataset.view === view);
       });
       $("topTitle").textContent = {
-        waiting: "게임현황",
+        waiting: "홈 · 경기 현황",
         playing: "게임중",
         gradeMatch: "급수 매칭",
         members: "회원관리",
         stats: "클럽통계"
       }[view];
+      $("bottomMembersBtn")?.classList.toggle("active",view==="members");
       renderAll();
       if (view === "stats") loadStatsGamesIfNeeded();
     }
@@ -2087,6 +2333,7 @@
       const list = $("waitingList");
       list.innerHTML = "";
       waiting.forEach((m) => list.appendChild(playerCard(m, true)));
+      renderBeginnerHome();
     }
     function activeGames() {
       return Object.values(state.games || {}).filter((g) => g.status === "PLAY").sort((a, b) => Number(a.court) - Number(b.court));
@@ -3577,6 +3824,11 @@
       $("loginAdminBtn").addEventListener("click", openAdminModal);
       $("adminBtn").addEventListener("click", openAdminModal);
       $("syncBtn").addEventListener("click", refreshData);
+      $("helpBtn").addEventListener("click", openBeginnerHelp);
+      $("quickMatchBtn").addEventListener("click", openQuickMatch);
+      $("manualAssignBtn").addEventListener("click", openManualAssign);
+      $("bottomMembersBtn").addEventListener("click", () => { if (state.isAdmin) setView("members"); else openAdminModal("members"); });
+      $("bottomAdminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else openAdminModal(); });
       $("logoutBtn").addEventListener("click", logout);
       $("restBtn").addEventListener("click", restCurrentUser);
       $("returnBtn").addEventListener("click", returnCurrentUser);
