@@ -2796,14 +2796,30 @@
 
       return picked.length === 4 ? picked : null;
     }
+    // Fisher–Yates shuffle: 자동매칭 후보만 무작위로 섞고 화면의 가나다순 정렬은 유지합니다.
+    function shuffleForAutoMatch(members) {
+      const shuffled = [...members];
+      for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
     function pickAutoMatch(mode) {
       const alreadyAssigned = assignedPlayerIds();
       const waiting = memberList().filter((m) => m.status === "WAIT" && !alreadyAssigned.has(m.id));
       if (waiting.length < 4) return null;
       if (mode === "gender") {
-        const male = pickPartnerAware(waiting.filter((m) => m.gender === "남").slice(0, 4), waiting);
-        const female = pickPartnerAware(waiting.filter((m) => m.gender === "여").slice(0, 4), waiting);
-        return male || female;
+        // 남복/여복 모두 성별을 섞지 않고 무작위 추첨합니다.
+        // 고정 파트너가 대기 중이면 기존 파트너 우선 규칙을 그대로 적용합니다.
+        const eligibleGroups = ["남", "여"].map((gender) => {
+          const candidates = shuffleForAutoMatch(waiting.filter((m) => m.gender === gender));
+          if (candidates.length < 4) return null;
+          return pickPartnerAware(candidates.slice(0, 4), candidates);
+        }).filter((group) => group && group.length === 4 && group.every((m) => m.gender === group[0].gender));
+        if (!eligibleGroups.length) return null;
+        return eligibleGroups[Math.floor(Math.random() * eligibleGroups.length)];
       }
       if (mode === "mixed") {
         const male = waiting.filter((m) => m.gender === "남").slice(0, 2);
