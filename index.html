@@ -1088,10 +1088,23 @@
     }
 
     .modal-close {
-      background: transparent;
-      color: #555;
-      font-size: 28px;
-      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-width: 70px;
+      min-height: 36px;
+      padding: 5px 10px;
+      border: 1px solid #cfd5dc;
+      border-radius: 7px;
+      background: #fff;
+      color: #303943;
+      font-size: 15px;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+    .modal-close:hover, .modal-close:focus-visible {
+      background: #eaf0f6;
     }
 
     .modal-body {
@@ -1543,6 +1556,8 @@
     .easy-waiting-card strong {font-size:16px;color:#493917;}
     .easy-waiting-card p {margin:0;font-size:13px;line-height:1.5;color:#4d4638;overflow-wrap:anywhere;}
     .easy-waiting-card button {width:100%;min-height:48px;border-radius:10px;background:#176b4d;color:white;font-size:16px;font-weight:900;}
+    .easy-waiting-actions {display:grid;grid-template-columns:1fr;gap:8px;}
+    .easy-waiting-actions .easy-edit-btn {background:#fff;color:#16543e;border:2px solid #7db6a0;}
     .easy-waiting-card button:disabled {background:#e9e7df;color:#746f62;cursor:not-allowed;}
     body.theme-dark .easy-waiting-title {color:#e8f0f5;}
     body.theme-dark .easy-waiting-card {background:#302b20;border-color:#665939;}
@@ -2405,11 +2420,14 @@
         const canRaise = state.isAdmin && openings.length > 0;
         return `<div class="easy-waiting-card"><strong>${group.court}번 대기 코트 (${group.ids.length}/4명)</strong>
           <div class="court-player-grid" aria-label="${group.court}번 대기 코트 선수">${group.ids.map((id, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(state.members[id]?.name || "미등록 회원")}</strong></div>`).join("")}</div>
-          ${state.isAdmin ? `<button type="button" data-easy-raise="${group.court}" ${canRaise ? "" : "disabled"}>${canRaise ? "▲ 경기 코트로 올리기" : "빈 경기 코트가 없습니다"}</button>` : `<p>운영진이 경기 코트로 배정합니다.</p>`}
+          ${state.isAdmin ? `<div class="easy-waiting-actions"><button type="button" class="easy-edit-btn" data-easy-wait-edit="${group.court}">선수 수정</button><button type="button" data-easy-raise="${group.court}" ${canRaise ? "" : "disabled"}>${canRaise ? "▲ 경기 코트로 올리기" : "빈 경기 코트가 없습니다"}</button></div>` : `<p>운영진이 경기 코트로 배정합니다.</p>`}
           </div>`;
       }).join("");
       root.querySelectorAll('[data-easy-raise]').forEach(button => button.addEventListener('click', () => {
         openEasyRaiseCourt(Number(button.dataset.easyRaise));
+      }));
+      root.querySelectorAll('[data-easy-wait-edit]').forEach(button => button.addEventListener('click', () => {
+        openPreGameCourtEditor(Number(button.dataset.easyWaitEdit));
       }));
     }
 
@@ -2433,12 +2451,13 @@
     // 경기 시작 전 로컬 배정만 편집합니다. 진행 중인 경기 기록은 수정하지 않습니다.
     function openPreGameCourtEditor(court, targetSlot = null) {
       if (!state.isAdmin) return openAdminModal();
-      if (!isGameCourt(court)) return;
+      if (!ALL_COURTS.includes(court)) return;
       if (activeGames().some(g => Number(g.court) === court)) {
         toast("진행 중인 경기는 선수 변경이 불가능합니다.");
         return;
       }
       const assigned = [...(state.courtAssignments[court] || [])];
+      const isWaitingCourtEditor = WAIT_COURTS.includes(court);
       const slotRows = Array.from({length: 4}, (_, index) => {
         const member = state.members[assigned[index]];
         return `<div class="court-edit-slot"><strong>${index + 1}번 · ${member ? escapeHtml(member.name) : "비어 있음"}</strong><button type="button" data-edit-slot="${index}">${member ? "교체" : "추가"}</button></div>`;
@@ -2449,8 +2468,8 @@
       const choices = selected === null ? "" : memberList()
         .filter(m => m.status === "WAIT" && !occupiedElsewhere.has(m.id) && (!assigned.includes(m.id) || assigned[selected] === m.id))
         .map(m => `<button type="button" data-replace-id="${escapeAttr(m.id)}" data-search-name="${escapeAttr(m.name.toLowerCase())}">${escapeHtml(m.name)} · ${escapeHtml(m.grade || "-")}급 ${escapeHtml(m.gender || "")}</button>`).join("");
-      showModal(`${court}번 코트 · 경기 전 선수 수정`, `
-        <p class="court-edit-help">배정된 선수 이름 옆의 <strong>교체</strong>를 누른 후, 새 선수 이름을 검색하세요. 변경은 경기 시작 전까지만 가능합니다.</p>
+      showModal(`${court}번 ${isWaitingCourtEditor ? "대기 코트" : "코트"} · 선수 수정`, `
+        <p class="court-edit-help">배정된 선수 이름 옆의 <strong>교체</strong>를 누른 후, 새 선수 이름을 검색하세요. ${isWaitingCourtEditor ? "변경 후 필요하면 경기 코트로 올리면 됩니다." : "변경은 경기 시작 전까지만 가능합니다."}</p>
         <div class="court-edit-slots">${slotRows}</div>
         ${selected === null ? `<p class="court-edit-help">변경할 자리의 교체 또는 추가 버튼을 눌러주세요.</p>` : `
           <strong>${selected + 1}번 자리 ${assigned[selected] ? "선수 교체" : "선수 추가"}</strong>
@@ -4032,7 +4051,7 @@
       root.className = "modal-backdrop";
       root.innerHTML = `
         <div class="modal" role="dialog" aria-modal="true">
-          <div class="modal-head"><span>${title}</span><button class="modal-close" id="modalClose">삭제</button></div>
+          <div class="modal-head"><span>${title}</span><button type="button" class="modal-close" id="modalClose" aria-label="창 닫기" title="창 닫기">× 닫기</button></div>
           <div class="modal-body">${body}</div>
           <div class="modal-actions" id="modalActions"></div>
         </div>
