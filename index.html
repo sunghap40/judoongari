@@ -1491,7 +1491,6 @@
     .bottom-nav .nav-btn { display:flex; justify-content:center; align-items:center; padding:10px 3px; font-size:clamp(12px,3.3vw,15px); font-weight:850; }
     .simple-big-match { justify-content:center; }
     .simple-big-match > span { margin:0 !important; }
-    .manage-btn { width:auto; min-width:34px; padding:0 3px; font-size:12px; }
     #syncBtn { font-size:12px; }
     /* Simple home v3 — intentional minimal layout, large touch targets. */
     .app { background:#f5f7f8; }
@@ -2925,8 +2924,8 @@
           <td>${escapeHtml(m.grade)}</td>
           <td>${escapeHtml(m.gender)}</td>
           <td>
-            <button class="manage-btn" data-edit="${m.id}" title="수정">수정</button>
-            <button class="manage-btn" data-delete="${m.id}" title="삭제">삭제</button>
+            <button class="manage-btn" data-edit="${m.id}" title="수정" aria-label="수정">✎</button>
+            <button class="manage-btn" data-delete="${m.id}" title="삭제" aria-label="삭제">×</button>
           </td>
         `;
         rows.appendChild(tr);
