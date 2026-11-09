@@ -1421,6 +1421,20 @@
     .big-cta>span { font-size:21px; font-weight:1000; }
     .big-cta small { font-size:12px; font-weight:700; color:#e2f7e9; }
     .secondary-actions { margin-top:10px; }
+
+    /* 경기 시작 전 선수 교체 */
+    .easy-court .easy-court-actions {display:flex;gap:7px;align-items:stretch;margin-top:3px;}
+    .easy-court .easy-court-actions button {flex:1;min-width:0;margin:0;padding:9px 5px;}
+    .easy-court .easy-court-actions .easy-edit-btn {background:#fff;color:#16543e;border:2px solid #7db6a0;}
+    .court-edit-slots {display:grid;gap:8px;margin-bottom:15px;}
+    .court-edit-slot {display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid #dce4e5;border-radius:10px;background:#f6faf9;}
+    .court-edit-slot strong {font-size:16px;color:#203b35;}
+    .court-edit-slot button {padding:9px 12px;border-radius:8px;background:#196e51;color:white;font-weight:850;white-space:nowrap;}
+    .court-edit-search {width:100%;min-height:45px;border:2px solid #a8c6bd;border-radius:9px;padding:10px;font-size:16px;margin:8px 0;}
+    .court-edit-candidates {display:grid;gap:6px;max-height:260px;overflow:auto;}
+    .court-edit-candidates button {text-align:left;padding:12px;border:1px solid #d8e4df;border-radius:9px;background:#fff;color:#203b35;font-weight:800;}
+    .court-edit-candidates button:disabled {opacity:.5;cursor:not-allowed;}
+    .court-edit-help {font-size:13px;color:#536961;line-height:1.5;margin:8px 0 12px;}
     .easy-courts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
     .easy-court { min-width:0; padding:15px 12px; border-radius:14px; background:#f1f8f4; border:1px solid #dcece1; display:grid; gap:6px; }
     .easy-court.is-playing { background:#edf5ff; border-color:#d8e8fc; }
@@ -1518,6 +1532,16 @@
     .simple-expander[open]>summary span {font-size:0;}
     .simple-expander[open]>summary span:after {content:'닫기';font-size:13px;}
     .simple-court-section>.simple-expander {margin-top:12px;}
+    .easy-waiting-groups {margin-top:16px;padding-top:13px;border-top:2px solid #e8ebe9;display:grid;gap:10px;}
+    .easy-waiting-title {margin:0 0 2px;font-size:17px;font-weight:950;color:#193c30;}
+    .easy-waiting-card {display:grid;gap:9px;padding:12px;border:1px solid #dfd5ad;border-radius:12px;background:#fffaf0;}
+    .easy-waiting-card strong {font-size:16px;color:#493917;}
+    .easy-waiting-card p {margin:0;font-size:13px;line-height:1.5;color:#4d4638;overflow-wrap:anywhere;}
+    .easy-waiting-card button {width:100%;min-height:48px;border-radius:10px;background:#176b4d;color:white;font-size:16px;font-weight:900;}
+    .easy-waiting-card button:disabled {background:#e9e7df;color:#746f62;cursor:not-allowed;}
+    body.theme-dark .easy-waiting-title {color:#e8f0f5;}
+    body.theme-dark .easy-waiting-card {background:#302b20;border-color:#665939;}
+    body.theme-dark .easy-waiting-card strong,body.theme-dark .easy-waiting-card p {color:#f2ebd6;}
     .simple-court-section .court-grid {border:0;border-radius:0;box-shadow:none;}
     .simple-waiting-hint {padding:10px 12px;color:#657970;font-size:13px;}
     .simple-waiting-expander .waiting-strip {padding:12px;}
@@ -1593,6 +1617,7 @@
         <section class="simple-court-section" aria-label="코트 현황">
           <div class="simple-section-head"><h2>코트 현황</h2><span>배정 후 경기 시작</span></div>
           <div id="easyCourts" class="easy-courts"></div>
+          <div id="easyWaitingGroups" class="easy-waiting-groups hidden" aria-live="polite"></div>
           <details id="courtDetails" class="simple-expander"><summary>전체 코트 배치 · 대기 코트 <span>보기</span></summary>
             <div class="court-grid" id="courtGrid"></div>
           </details>
@@ -2210,13 +2235,124 @@
         const ready = !game && ids.length === 4;
         const names = (game ? game.players : ids).map(id => state.members[id]?.name).filter(Boolean);
         const status = game ? "경기 중" : ready ? "시작 준비 완료" : ids.length ? `${ids.length}/4명 배정` : "비어 있음";
-        const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>` : ready ? `<button type="button" data-easy-start="${court}">▶ 경기 시작</button>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
+        const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>`
+          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? "✎ 선수 수정" : "+ 선수 배정"}</button>${ready ? `<button type="button" data-easy-start="${court}">▶ 경기 시작</button>` : ""}</div>`
+          : ready ? `<span class="court-hint">경기 시작 대기</span>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
         return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><h3>${court}번 코트</h3><span class="court-status">${status}</span><small>${names.length ? escapeHtml(names.join(" · ")) : "배정된 선수가 없습니다."}</small>${button}</div>`;
       }).join("");
       const root = $("easyCourts");
       root.innerHTML = html;
+      root.querySelectorAll('[data-easy-edit]').forEach(btn=>btn.addEventListener('click',()=>openPreGameCourtEditor(Number(btn.dataset.easyEdit))));
       root.querySelectorAll('[data-easy-start]').forEach(btn=>btn.addEventListener('click',()=>startAssignedGame(Number(btn.dataset.easyStart))));
       root.querySelectorAll('[data-easy-end]').forEach(btn=>btn.addEventListener('click',()=>finishGame(btn.dataset.easyEnd)));
+      renderEasyWaitingGroups();
+    }
+
+    function emptyGameCourts() {
+      const playing = new Set(activeGames().map(game => Number(game.court)));
+      return GAME_COURTS.filter(court => !playing.has(court) && !(state.courtAssignments[court] || []).length);
+    }
+
+    // 숨겨진 상세 메뉴를 열지 않고도 대기팀을 경기 코트로 이동할 수 있습니다.
+    function renderEasyWaitingGroups() {
+      const root = $("easyWaitingGroups");
+      if (!root) return;
+      const groups = WAIT_COURTS.map(court => ({court, ids: state.courtAssignments[court] || []}))
+        .filter(group => group.ids.length);
+      root.classList.toggle("hidden", groups.length === 0);
+      if (!groups.length) { root.innerHTML = ""; return; }
+      const openings = emptyGameCourts();
+      root.innerHTML = `<h3 class="easy-waiting-title">⏳ 대기 코트 · ${groups.length}팀</h3>` + groups.map(group => {
+        const names = group.ids.map(id => state.members[id]?.name || "미등록 회원").join(" · ");
+        const canRaise = state.isAdmin && openings.length > 0;
+        return `<div class="easy-waiting-card"><strong>${group.court}번 대기 코트 (${group.ids.length}/4명)</strong>
+          <p>${escapeHtml(names)}</p>
+          ${state.isAdmin ? `<button type="button" data-easy-raise="${group.court}" ${canRaise ? "" : "disabled"}>${canRaise ? "▲ 경기 코트로 올리기" : "빈 경기 코트가 없습니다"}</button>` : `<p>운영진이 경기 코트로 배정합니다.</p>`}
+          </div>`;
+      }).join("");
+      root.querySelectorAll('[data-easy-raise]').forEach(button => button.addEventListener('click', () => {
+        openEasyRaiseCourt(Number(button.dataset.easyRaise));
+      }));
+    }
+
+    function openEasyRaiseCourt(waitCourt) {
+      if (!state.isAdmin) return openAdminModal();
+      if (!WAIT_COURTS.includes(waitCourt) || !(state.courtAssignments[waitCourt] || []).length) {
+        return toast("이 대기팀은 이미 이동했거나 비어 있습니다.");
+      }
+      const openings = emptyGameCourts();
+      if (!openings.length) return toast("빈 경기 코트가 없습니다. 경기를 종료한 뒤 올려주세요.");
+      if (openings.length === 1) return raiseWaitingGroup(waitCourt, openings[0]);
+      showModal(`${waitCourt}번 대기팀 올리기`, `
+        <p class="court-edit-help">배정할 빈 경기 코트를 선택하세요.</p>
+        <div class="raise-targets">${openings.map(court => `<button class="mini-btn" type="button" data-quick-raise="${court}">${court}번 경기 코트</button>`).join("")}</div>
+      `, [["취소",closeModal]]);
+      document.querySelectorAll('[data-quick-raise]').forEach(button => button.addEventListener('click', () => {
+        raiseWaitingGroup(waitCourt, Number(button.dataset.quickRaise));
+      }));
+    }
+
+    // 경기 시작 전 로컬 배정만 편집합니다. 진행 중인 경기 기록은 수정하지 않습니다.
+    function openPreGameCourtEditor(court, targetSlot = null) {
+      if (!state.isAdmin) return openAdminModal();
+      if (!isGameCourt(court)) return;
+      if (activeGames().some(g => Number(g.court) === court)) {
+        toast("진행 중인 경기는 선수 변경이 불가능합니다.");
+        return;
+      }
+      const assigned = [...(state.courtAssignments[court] || [])];
+      const slotRows = Array.from({length: 4}, (_, index) => {
+        const member = state.members[assigned[index]];
+        return `<div class="court-edit-slot"><strong>${index + 1}번 · ${member ? escapeHtml(member.name) : "비어 있음"}</strong><button type="button" data-edit-slot="${index}">${member ? "교체" : "추가"}</button></div>`;
+      }).join("");
+      const selected = targetSlot === null ? null : Math.max(0, Math.min(3, targetSlot));
+      const occupiedElsewhere = assignedPlayerIds();
+      assigned.forEach(id => occupiedElsewhere.delete(id));
+      const choices = selected === null ? "" : memberList()
+        .filter(m => m.status === "WAIT" && !occupiedElsewhere.has(m.id) && (!assigned.includes(m.id) || assigned[selected] === m.id))
+        .map(m => `<button type="button" data-replace-id="${escapeAttr(m.id)}" data-search-name="${escapeAttr(m.name.toLowerCase())}">${escapeHtml(m.name)} · ${escapeHtml(m.grade || "-")}급 ${escapeHtml(m.gender || "")}</button>`).join("");
+      showModal(`${court}번 코트 · 경기 전 선수 수정`, `
+        <p class="court-edit-help">배정된 선수 이름 옆의 <strong>교체</strong>를 누른 후, 새 선수 이름을 검색하세요. 변경은 경기 시작 전까지만 가능합니다.</p>
+        <div class="court-edit-slots">${slotRows}</div>
+        ${selected === null ? `<p class="court-edit-help">변경할 자리의 교체 또는 추가 버튼을 눌러주세요.</p>` : `
+          <strong>${selected + 1}번 자리 ${assigned[selected] ? "선수 교체" : "선수 추가"}</strong>
+          <input id="courtEditSearch" class="court-edit-search" type="search" placeholder="대기 회원 이름 검색" autocomplete="off" aria-label="교체할 선수 이름 검색">
+          <div id="courtEditCandidates" class="court-edit-candidates">${choices || '<p class="court-edit-help">선택할 수 있는 대기 회원이 없습니다.</p>'}</div>
+          ${assigned[selected] ? '<button id="courtEditRemove" class="action-btn" type="button">이 선수 배정 해제</button>' : ''}
+        `}
+      `, [["완료", () => {closeModal();renderWaiting();}, "confirm"]]);
+      document.querySelectorAll('[data-edit-slot]').forEach(btn => btn.addEventListener('click', () => openPreGameCourtEditor(court, Number(btn.dataset.editSlot))));
+      if (selected === null) return;
+      const search = $("courtEditSearch");
+      search?.addEventListener("input", () => {
+        const keyword = search.value.trim().toLowerCase();
+        document.querySelectorAll('[data-replace-id]').forEach(btn => { btn.classList.toggle("hidden", !btn.dataset.searchName.includes(keyword)); });
+      });
+      document.querySelectorAll('[data-replace-id]').forEach(btn => btn.addEventListener('click', () => {
+        // 선택한 자리의 선수를 교체하고 기존 선수는 대기 상태로 돌립니다.
+        const replacement = btn.dataset.replaceId;
+        if (activeGames().some(g => Number(g.court) === court)) return toast("이미 시작된 경기입니다.");
+        const updated = [...(state.courtAssignments[court] || [])];
+        const prior = updated[selected];
+        if (updated.includes(replacement) && prior !== replacement) return toast("이미 이 코트에 배정된 선수입니다.");
+        if (selected < updated.length) updated[selected] = replacement;
+        else updated.push(replacement);
+        state.courtAssignments[court] = updated;
+        state.selected = new Set(updated);
+        renderWaiting();
+        openPreGameCourtEditor(court);
+        toast(prior ? "선수를 교체했습니다. 경기 시작 전 확인하세요." : "선수를 추가했습니다.");
+      }));
+      $("courtEditRemove")?.addEventListener("click", () => {
+        const updated = [...(state.courtAssignments[court] || [])];
+        updated.splice(selected, 1);
+        if (updated.length) state.courtAssignments[court] = updated;
+        else delete state.courtAssignments[court];
+        state.selected = new Set(updated);
+        renderWaiting();
+        openPreGameCourtEditor(court);
+        toast("선수를 배정에서 제외하고 대기 상태로 돌렸습니다.");
+      });
     }
 
     function showApp() {
@@ -2389,11 +2525,12 @@
     }
 
     function firstAssignableCourt() {
+      // 새 경기의 1순위는 비어 있는 1~5번 경기 코트입니다.
+      const availableGameCourt = emptyGameCourts()[0];
+      if (availableGameCourt) return availableGameCourt;
+      // 경기 코트가 모두 사용 중인 경우에만 6~10번 대기 코트에 배정합니다.
       for (const court of WAIT_COURTS) {
         if (!(state.courtAssignments[court] || []).length) return court;
-      }
-      for (const court of GAME_COURTS) {
-        if (!activeGames().some((g) => Number(g.court) === court) && !(state.courtAssignments[court] || []).length) return court;
       }
       return null;
     }
@@ -2523,7 +2660,9 @@
         return;
       }
       assignGroupToCourt(picked, court);
-      toast(`${court}번 코트에 4명 배정되었습니다. 코트의 시작 버튼을 눌러주세요.`);
+      toast(isGameCourt(court)
+        ? `${court}번 경기 코트에 배정했습니다. 경기 시작을 눌러주세요.`
+        : `${court}번 대기 코트에 배정했습니다. 빈 경기 코트가 생기면 '경기 코트로 올리기'를 눌러주세요.`);
     }
 
     function gradeMatchCandidates(grade) {
@@ -2551,7 +2690,7 @@
       }
       assignGroupToCourt(picked, court);
       renderGradeMatch();
-      toast(`${grade}급 4명을 ${court}번 코트에 배정했습니다.`);
+      toast(isGameCourt(court) ? `${grade}급 4명을 ${court}번 경기 코트에 배정했습니다.` : `${grade}급 4명을 ${court}번 대기 코트에 배정했습니다. 올리기 버튼을 이용하세요.`);
     }
 
     function autoAssignGradeMatch() {
@@ -3555,76 +3694,11 @@
       await startGame(court, players);
     }
 
-    function kakaoMemberNames(ids) {
-      return (ids || []).map((id) => state.members[id]?.name).filter(Boolean).join(", ");
-    }
-
-    function kakaoWaitingMembers() {
-      const assigned = typeof assignedPlayerIds === "function" ? assignedPlayerIds() : new Set();
-      return memberList().filter((m) => m.status === "WAIT" && !assigned.has(m.id));
-    }
-
-    function kakaoBuildStatusMessage(startedCourt = null, startedPlayers = null) {
-      const lines = [];
-      const stamp = new Date().toLocaleString("ko-KR", { hour12: false });
-      lines.push("[주둥아리 라켓 매칭현황]");
-      lines.push(stamp);
-      if (startedCourt && startedPlayers?.length) {
-        lines.push("");
-        lines.push(`▶ ${startedCourt}번 코트 게임 시작`);
-        lines.push(kakaoMemberNames(startedPlayers));
-      }
-      const games = activeGames();
-      lines.push("");
-      lines.push("게임중");
-      if (games.length) {
-        games.forEach((game) => lines.push(`${game.court}번 코트: ${kakaoMemberNames(game.players || [])}`));
-      } else {
-        lines.push("진행중인 게임 없음");
-      }
-      const waiting = kakaoWaitingMembers();
-      lines.push("");
-      lines.push(`대기 ${waiting.length}명`);
-      lines.push(waiting.length ? waiting.map((m) => `${m.name}(${m.grade}/${todayGameCount(m.id)})`).join(", ") : "대기자 없음");
-      return lines.join("\n");
-    }
-
-    async function kakaoCopyText(text) {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
-      }
-      const area = document.createElement("textarea");
-      area.value = text;
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand("copy");
-      area.remove();
-    }
-
     function openKakaoChatRoom() {
       window.open(KAKAO_OPENCHAT_URL, "_blank", "noopener");
       toast("카톡 오픈채팅방을 열었습니다.");
     }
 
-    function openKakaoNotifyModal(startedCourt = null, startedPlayers = null) {
-      const message = kakaoBuildStatusMessage(startedCourt, startedPlayers);
-      showModal("카톡 오픈채팅 알림", `
-        <div class="field full">
-          <label for="kakaoMessage">전송할 내용</label>
-          <textarea id="kakaoMessage" rows="10">${escapeHtml(message)}</textarea>
-        </div>
-        <p class="hint">카카오 보안 정책상 자동 전송은 불가능합니다. 버튼을 누르면 내용이 복사되고 오픈채팅방이 열리니, 입력창에 붙여넣어 전송해주세요.</p>
-      `, [
-        ["닫기", closeModal],
-        ["내용 복사 후 카톡 열기", async () => {
-          const messageText = $("kakaoMessage").value;
-          await kakaoCopyText(messageText);
-          window.open(KAKAO_OPENCHAT_URL, "_blank", "noopener");
-          toast("알림 내용을 복사했습니다.");
-        }, "confirm"]
-      ]);
-    }
     async function startGame(court, assignedPlayers = null) {
       const players = assignedPlayers || Array.from(state.selected);
       if (players.length !== 4) return toast("Assign 4 players.");
@@ -3654,7 +3728,6 @@
       await loadData();
       setView("waiting");
       toast("게임을 시작했습니다.");
-      if (state.isAdmin) openKakaoNotifyModal(court, players);
     }
     async function finishGame(gameId) {
       const game = state.games[gameId];
