@@ -798,17 +798,24 @@
     body.theme-dark .member-normal-name { color: #d7dee8 !important; }
     body.theme-dark .member-guest-name { color: #69a7ff !important; }
     tr.member-no-attendance td { background: #fff4b8; }
-    .member-admin-name { color: #d92525 !important; }
+    /* 운영진은 경고색 대신 부드러운 음영과 작은 역할 배지로 구분 */
+    tr.member-admin-row td { background: #eaf5f1; }
+    tr.member-admin-row td:first-child { box-shadow: inset 3px 0 #5d9e87; }
+    .member-admin-name { color: #205e4b !important; }
     .admin-badge {
       display: inline-block;
       margin-left: 4px;
-      padding: 1px 5px;
-      border-radius: 4px;
-      background: #ffe6e6;
-      color: #d92525;
-      font-size: 11px;
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #d3eae0;
+      color: #205e4b;
+      font-size: 10px;
       font-weight: 900;
+      vertical-align: middle;
     }
+    body.theme-dark tr.member-admin-row td { background: #1c3730; }
+    body.theme-dark .member-admin-name { color: #a6e2c9 !important; }
+    body.theme-dark .admin-badge { background: #345b4b; color: #ddf6e9; }
     .status-toggle {
       width: 46px;
       height: 40px;
@@ -2939,6 +2946,7 @@
         const tr = document.createElement("tr");
         const attendance = memberMonthlyAttendance(m.id);
         if (!m.isGuest && attendance === 0) tr.classList.add("member-no-attendance");
+        if (m.admin) tr.classList.add("member-admin-row");
         const statusIcon = m.status === "WAIT" || m.status === "PLAY" ? "Ⅱ" : "■";
         tr.innerHTML = `
           <td class="name ${m.admin ? "member-admin-name" : m.isGuest ? "member-guest-name" : "member-normal-name"}">
