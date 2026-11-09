@@ -1439,6 +1439,13 @@
     .easy-court .easy-court-actions {display:flex;gap:7px;align-items:stretch;margin-top:3px;}
     .easy-court .easy-court-actions button {flex:1;min-width:0;margin:0;padding:9px 5px;}
     .easy-court .easy-court-actions .easy-edit-btn {background:#fff;color:#16543e;border:2px solid #7db6a0;}
+    /* 모바일 코트 버튼은 2글자씩 정확히 나눠 가운데 정렬합니다. */
+    .court-action-label {display:inline-flex;gap:4px;align-items:center;justify-content:center;white-space:nowrap;}
+    .court-action-label span {display:block;white-space:nowrap;}
+    @media (max-width: 600px) {
+      .easy-court .easy-court-actions button {display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;min-height:52px;}
+      .easy-court .court-action-label {flex-direction:column;gap:0;}
+    }
     .court-edit-slots {display:grid;gap:8px;margin-bottom:15px;}
     .court-edit-slot {display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid #dce4e5;border-radius:10px;background:#f6faf9;}
     .court-edit-slot strong {font-size:16px;color:#203b35;}
@@ -2386,7 +2393,7 @@
         const names = (game ? game.players : ids).map(id => state.members[id]?.name).filter(Boolean);
         const status = game ? "경기 중" : ready ? "시작 준비 완료" : ids.length ? `${ids.length}/4명 배정` : "비어 있음";
         const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>`
-          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? "선수 수정" : "+ 선수 배정"}</button>${ready ? `<button type="button" data-easy-start="${court}">경기 시작</button>` : ""}</div>`
+          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? '<span class="court-action-label"><span>선수</span><span>수정</span></span>' : '<span class="court-action-label"><span>선수</span><span>배정</span></span>'}</button>${ready ? `<button type="button" data-easy-start="${court}"><span class="court-action-label"><span>경기</span><span>시작</span></span></button>` : ""}</div>`
           : ready ? `<span class="court-hint">경기 시작 대기</span>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
         const playerDisplay = names.length
           ? `<div class="court-player-grid" aria-label="${court}번 코트 배정 선수">${names.map((name, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(name)}</strong></div>`).join("")}</div>`
