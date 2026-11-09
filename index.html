@@ -1554,6 +1554,63 @@
     body.theme-dark .simple-alt-actions button {background:#263441;color:#ebf3f5;border-color:#45505c;}
     @media(max-width:390px) {.content{padding:10px 9px 100px;} .simple-welcome,.simple-court-section{padding:13px;} .simple-big-match{min-height:75px;} .simple-alt-actions button{font-size:13px;} }
 
+
+    /* v7: 코트 선수 이름을 누구나 쉽게 읽도록 두 줄 카드로 표시 */
+    .court-player-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+      margin:5px 0 7px;
+    }
+    .court-player-name {
+      min-width:0;
+      min-height:52px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:5px;
+      padding:7px 4px;
+      background:#ffffff;
+      border:1px solid #cbded5;
+      border-radius:9px;
+      color:#102d23;
+      text-align:center;
+    }
+    .court-player-name strong {
+      min-width:0;
+      font-size:clamp(15px,3.7vw,20px);
+      line-height:1.25;
+      font-weight:950;
+      letter-spacing:-.045em;
+      overflow-wrap:anywhere;
+      word-break:keep-all;
+    }
+    .court-player-number {
+      flex:0 0 auto;
+      display:inline-grid;
+      place-items:center;
+      width:17px;
+      height:17px;
+      border-radius:50%;
+      background:#dff1e9;
+      color:#20684d;
+      font-size:10px;
+      font-weight:900;
+    }
+    .court-player-empty {font-size:14px;color:#62756e;padding:13px 0;}
+    .easy-court.is-playing .court-player-name {border-color:#c4d9ee;}
+    .easy-court.is-playing .court-player-number {background:#dfeeff;color:#245d91;}
+    .easy-court.is-ready .court-player-name {border-color:#ead7a8;}
+    .easy-waiting-card .court-player-name {border-color:#e9d9ad;}
+    body.theme-dark .court-player-name {background:#18272b;color:#f2f7f5;border-color:#476057;}
+    body.theme-dark .court-player-number {background:#2b5548;color:#fff;}
+    body.theme-dark .court-player-empty {color:#c5d0ca;}
+    @media(max-width:380px) {
+      .court-player-grid {gap:5px;}
+      .court-player-name {min-height:49px;gap:3px;padding:5px 3px;}
+      .court-player-name strong {font-size:15px;}
+      .court-player-number {width:15px;height:15px;font-size:9px;}
+    }
   </style>
 </head>
 <body>
@@ -2238,7 +2295,10 @@
         const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>`
           : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? "✎ 선수 수정" : "+ 선수 배정"}</button>${ready ? `<button type="button" data-easy-start="${court}">▶ 경기 시작</button>` : ""}</div>`
           : ready ? `<span class="court-hint">경기 시작 대기</span>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
-        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><h3>${court}번 코트</h3><span class="court-status">${status}</span><small>${names.length ? escapeHtml(names.join(" · ")) : "배정된 선수가 없습니다."}</small>${button}</div>`;
+        const playerDisplay = names.length
+          ? `<div class="court-player-grid" aria-label="${court}번 코트 배정 선수">${names.map((name, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(name)}</strong></div>`).join("")}</div>`
+          : `<div class="court-player-empty">배정된 선수가 없습니다</div>`;
+        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><h3>${court}번 코트</h3><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
       }).join("");
       const root = $("easyCourts");
       root.innerHTML = html;
@@ -2266,7 +2326,7 @@
         const names = group.ids.map(id => state.members[id]?.name || "미등록 회원").join(" · ");
         const canRaise = state.isAdmin && openings.length > 0;
         return `<div class="easy-waiting-card"><strong>${group.court}번 대기 코트 (${group.ids.length}/4명)</strong>
-          <p>${escapeHtml(names)}</p>
+          <div class="court-player-grid" aria-label="${group.court}번 대기 코트 선수">${group.ids.map((id, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(state.members[id]?.name || "미등록 회원")}</strong></div>`).join("")}</div>
           ${state.isAdmin ? `<button type="button" data-easy-raise="${group.court}" ${canRaise ? "" : "disabled"}>${canRaise ? "▲ 경기 코트로 올리기" : "빈 경기 코트가 없습니다"}</button>` : `<p>운영진이 경기 코트로 배정합니다.</p>`}
           </div>`;
       }).join("");
