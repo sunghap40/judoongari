@@ -2808,8 +2808,27 @@
       return shuffled;
     }
 
+    // 직전 종료 경기의 4명을 추적합니다. 경기 횟수 동률일 때도
+    // 같은 3~4명이 바로 재편성되지 않도록 신규 대기 인원을 섞습니다.
+    function lastFinishedPlayerIds() {
+      const last = Object.values(state.games || {})
+        .filter((game) => game?.status === "DONE" && Array.isArray(game.players) && game.players.length === 4)
+        .sort((a, b) => String(b.endedAt || b.startedAt || "").localeCompare(String(a.endedAt || a.startedAt || "")))[0];
+      return new Set(last?.players || []);
+    }
+
+    // 2:2가 최선, 불가능하면 직전 출전자 1명/0명을 3명/4명보다 우선합니다.
+    // 단, 오늘 경기 횟수가 동일한 조합들 사이에서만 사용합니다.
+    function recentMatchBalanceRank(recent) {
+      return [2, 1, 0, 3, 4].indexOf(recent);
+    }
+
     function fairMatchGroup(waiting, targetMale, targetFemale) {
       const waitingById = new Map(waiting.map((member) => [member.id, member]));
+      const previous = lastFinishedPlayerIds();
+      // 경기 횟수를 최우선으로 최소화합니다. 동률인 조합이 여러 개일 때만
+      // 대기 8명/12명 이상에서 직전 경기 인원 2명 + 다른 인원 2명을 우선합니다.
+      const balancePrevious = waiting.length >= 8 && previous.size === 4;
       const seen = new Set();
       const units = [];
       // 고정 파트너가 모두 대기 중이면 한 묶음으로 다룹니다.
@@ -2825,13 +2844,16 @@
         if (male > targetMale || female > targetFemale) continue;
         units.push({ group, male, female, fixed: group.length === 2 ? 1 : 0,
           games: group.reduce((sum, m) => sum + todayGameCount(m.id), 0),
+          recent: group.filter((m) => previous.has(m.id)).length,
           maxGames: Math.max(...group.map((m) => todayGameCount(m.id))) });
       }
 
       // 0/1 동적 계획법: 한 사람은 한 번만, 고정 파트너는 분리하지 않고,
       // 기존 정책에 맞춰 한 경기당 고정 파트너 묶음은 최대 한 쌍 사용합니다.
-      // 목적: 총 경기 횟수 최소 → 최대 개인 경기 횟수 최소 → 완전 동점은 랜덤.
-      const states = new Map([["0,0,0", { male: 0, female: 0, fixed: 0,
+      // 최근 종료 경기 인원 수를 상태에 포함해, 경기 횟수 동률 조합끼리만
+      // 직전 출전자 2:2 균형을 비교합니다. 총 경기 횟수 → 개인 최대 횟수
+      // → 최근 출전자 분산 → 무작위 추첨 순서입니다.
+      const states = new Map([["0,0,0,0", { male: 0, female: 0, fixed: 0, recent: 0,
         games: 0, maxGames: 0, picked: [] }]]);
       for (const unit of shuffleForAutoMatch(units)) {
         const snapshot = [...states.values()];
@@ -2840,11 +2862,13 @@
           const female = prev.female + unit.female;
           const fixed = prev.fixed + unit.fixed;
           if (male > targetMale || female > targetFemale || fixed > 1) continue;
-          const next = { male, female, fixed,
+          const recent = prev.recent + unit.recent;
+          if (recent > 4) continue;
+          const next = { male, female, fixed, recent,
             games: prev.games + unit.games,
             maxGames: Math.max(prev.maxGames, unit.maxGames),
             picked: [...prev.picked, ...unit.group] };
-          const key = `${male},${female},${fixed}`;
+          const key = `${male},${female},${fixed},${recent}`;
           const old = states.get(key);
           if (!old || next.games < old.games ||
               (next.games === old.games && next.maxGames < old.maxGames) ||
@@ -2853,12 +2877,19 @@
           }
         }
       }
-      const eligible = [0, 1].map((fixed) => states.get(`${targetMale},${targetFemale},${fixed}`))
-        .filter(Boolean).sort((a, b) => a.games - b.games || a.maxGames - b.maxGames);
+      let eligible = [...states.values()].filter((candidate) =>
+        candidate.male === targetMale && candidate.female === targetFemale);
       if (!eligible.length) return null;
+      // 1순위: 오늘 총 경기 횟수, 2순위: 개인별 최대 경기 횟수.
+      // 경기 횟수 점수가 똑같을 때에만 2:2 분산을 적용합니다.
+      eligible.sort((a, b) => a.games - b.games || a.maxGames - b.maxGames);
       const best = eligible[0];
-      const tied = eligible.filter((candidate) =>
+      let tied = eligible.filter((candidate) =>
         candidate.games === best.games && candidate.maxGames === best.maxGames);
+      if (balancePrevious && tied.length > 1) {
+        const bestBalance = Math.min(...tied.map((candidate) => recentMatchBalanceRank(candidate.recent)));
+        tied = tied.filter((candidate) => recentMatchBalanceRank(candidate.recent) === bestBalance);
+      }
       return shuffleForAutoMatch(tied[Math.floor(Math.random() * tied.length)].picked);
     }
 
@@ -2872,12 +2903,18 @@
         const eligibleGroups = [fairMatchGroup(waiting, 4, 0), fairMatchGroup(waiting, 0, 4)]
           .filter((group) => group && group.length === 4);
         if (!eligibleGroups.length) return null;
+        const previous = lastFinishedPlayerIds();
         const scored = eligibleGroups.map((group) => ({ group,
           games: group.reduce((sum, m) => sum + todayGameCount(m.id), 0),
-          maxGames: Math.max(...group.map((m) => todayGameCount(m.id))) }));
+          maxGames: Math.max(...group.map((m) => todayGameCount(m.id))),
+          recent: group.filter((m) => previous.has(m.id)).length }));
         scored.sort((a, b) => a.games - b.games || a.maxGames - b.maxGames);
         const best = scored[0];
-        const tied = scored.filter((item) => item.games === best.games && item.maxGames === best.maxGames);
+        let tied = scored.filter((item) => item.games === best.games && item.maxGames === best.maxGames);
+        if (waiting.length >= 8 && previous.size === 4 && tied.length > 1) {
+          const bestBalance = Math.min(...tied.map((item) => recentMatchBalanceRank(item.recent)));
+          tied = tied.filter((item) => recentMatchBalanceRank(item.recent) === bestBalance);
+        }
         return tied[Math.floor(Math.random() * tied.length)].group;
       }
       if (mode === "mixed") {
@@ -3985,21 +4022,46 @@
       setView("waiting");
       toast("게임을 시작했습니다.");
     }
+    const finishingGames = new Set();
     async function finishGame(gameId) {
       const game = state.games[gameId];
-      if (!game) return;
+      if (!game || game.status !== "PLAY" || finishingGames.has(gameId)) return;
+      finishingGames.add(gameId);
+      const endedAt = now();
       const updates = {};
+      const oldStatuses = {};
+      const previousAssignments = Object.fromEntries(
+        Object.entries(state.courtAssignments).map(([court, ids]) => [court, [...ids]]));
       game.players.forEach((id) => {
+        oldStatuses[id] = state.members[id]?.status;
         updates[`members/${id}/status`] = "WAIT";
-        updates[`members/${id}/updatedAt`] = now();
+        updates[`members/${id}/updatedAt`] = endedAt;
+        if (state.members[id]) state.members[id].status = "WAIT";
       });
       updates[`games/${gameId}/status`] = "DONE";
-      updates[`games/${gameId}/endedAt`] = now();
-      await dbPatch("/", updates);
+      updates[`games/${gameId}/endedAt`] = endedAt;
+
+      // Firebase 재조회가 끝나기 전에 로컬 화면을 즉시 갱신합니다.
+      // 오늘 경기 횟수 캐시도 새 객체 참조로 무효화합니다.
+      state.games = { ...state.games, [gameId]: { ...game, status: "DONE", endedAt } };
       const promotedFrom = promoteNextWaitingCourt(Number(game.court));
-      await loadData();
-      renderWaiting();
+      renderAll();
       toast(promotedFrom ? `${promotedFrom}번 대기팀이 ${game.court}번 코트로 이동했습니다.` : "게임이 종료되었습니다.");
+      try {
+        await dbPatch("/", updates);
+        // 전체 회원/게임 데이터 재조회는 생략하여 네트워크 지연을 제거합니다.
+      } catch (error) {
+        console.error("game finish save failed", error);
+        state.games = { ...state.games, [gameId]: game };
+        game.players.forEach((id) => {
+          if (state.members[id]) state.members[id].status = oldStatuses[id];
+        });
+        state.courtAssignments = previousAssignments;
+        renderAll();
+        toast("게임 종료 저장에 실패했습니다. 이전 상태로 되돌렸습니다.");
+      } finally {
+        finishingGames.delete(gameId);
+      }
     }
 
     async function restCurrentUser() {
