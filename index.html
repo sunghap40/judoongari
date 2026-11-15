@@ -1534,6 +1534,13 @@
     .simple-metrics span {font-size:13px;font-weight:800;color:#566c62;}
     .simple-main-action {background:#fff;border:1px solid #e6eaec;border-radius:18px;padding:12px;box-shadow:0 3px 12px #183c3810;}
     .simple-big-match {width:100%;min-height:83px;border-radius:14px;background:#08734f;color:white;display:flex;align-items:center;justify-content:center;gap:13px;font-size:clamp(21px,5vw,27px);font-weight:950;box-shadow:0 5px 12px #085b3d28;}
+    /* 자주 쓰는 남복·여복 원터치 배정 버튼 */
+    .simple-match-quick-row {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:9px;align-items:stretch;}
+    .simple-match-quick-row .simple-big-match {min-width:0;width:100%;}
+    .simple-gender-quick {min-width:0;min-height:83px;border-radius:14px;color:#fff;background:#df253b;font-size:clamp(15px,3.8vw,20px);font-weight:950;line-height:1.25;box-shadow:0 5px 12px #b7193030;padding:8px 5px;display:flex;align-items:center;justify-content:center;text-align:center;}
+    .simple-gender-quick:active {transform:scale(.98);background:#b91c30;}
+    .simple-gender-quick:focus-visible {outline:3px solid #f4a3ab;outline-offset:2px;}
+    @media(max-width:390px) {.simple-gender-quick {min-height:75px;font-size:15px;}}
     .simple-match-icon {font-size:33px;font-weight:500;line-height:1;}
     .simple-match-arrow {font-size:36px;font-weight:400;margin-left:auto;margin-right:15px;line-height:1;}
     .simple-big-match .simple-match-icon {margin-left:auto;}
@@ -1762,7 +1769,10 @@
         </div>
 
         <section class="simple-main-action" aria-label="경기 만들기">
-          <button id="quickMatchBtn" type="button" class="simple-big-match"><span>경기 만들기</span></button>
+          <div class="simple-match-quick-row">
+            <button id="quickMatchBtn" type="button" class="simple-big-match"><span>경기 만들기</span></button>
+            <button id="quickGenderBtn" type="button" class="simple-gender-quick" title="남복·여복 자동 배정 바로 실행" aria-label="남복 여복 자동 배정 바로 실행">남복·여복<br>퀵배정</button>
+          </div>
           <div class="simple-alt-actions">
             <button id="manualAssignBtn" type="button">직접 배정</button>
             <button id="partnerPairsBtn" type="button">파트너 고정</button>
@@ -4258,6 +4268,10 @@
       $("syncBtn").addEventListener("click", refreshData);
       $("helpBtn").addEventListener("click", openBeginnerHelp);
       $("quickMatchBtn").addEventListener("click", openQuickMatch);
+      $("quickGenderBtn").addEventListener("click", () => {
+        if (!state.isAdmin) return openAdminModal();
+        autoMatch("gender");
+      });
       $("manualAssignBtn").addEventListener("click", openManualAssign);
       $("bottomMembersBtn").addEventListener("click", () => { if (state.isAdmin) setView("members"); else openAdminModal("members"); });
       $("bottomAdminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else openAdminModal(); });
