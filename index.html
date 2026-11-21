@@ -1953,7 +1953,7 @@
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
     // 대표 계정: Firebase Authentication에서 생성한 사용자 UID를 아래에 설정하세요.
     // 현재 값은 기존 Firebase 운영자 UID이며 신규 대표 계정이면 반드시 변경해야 합니다.
-    const ADMIN_UID = "ByxD01FZaIZwocLgA5e4F4v7vho1";
+    const ADMIN_UID = "kWohYQoefnftmdYT8x77Beyrq1n2";
     const LOCAL_ADMIN_ID = "judoong";
     const LOCAL_ADMIN_PASSWORD = "1111";
     const FIREBASE_CONFIG = {
@@ -3587,18 +3587,25 @@
         <div class="field full"><label for="repEmail">대표 계정 이메일</label><input id="repEmail" type="email" autocomplete="username" placeholder="Firebase에 등록된 대표 이메일"></div>
         <div class="field full"><label for="repPassword">비밀번호</label><input id="repPassword" type="password" autocomplete="current-password" placeholder="대표 계정 비밀번호"></div>
         <p style="font-size:12px;color:#63717c;line-height:1.5">대표 계정은 Firebase Authentication에 생성하고, 아래 설정의 대표 UID와 연결해야 합니다.</p>
+        <div id="repLoginError" role="alert" aria-live="polite" style="display:none;margin-top:12px;border:1px solid #efb2b2;background:#fff2f2;color:#8b1d1d;border-radius:8px;padding:12px;line-height:1.6;font-size:13px;white-space:pre-line"></div>
       `, [["취소", closeModal], ["대표 계정 입장", async () => {
         const email = $("repEmail").value.trim();
         const password = $("repPassword").value;
-        if (!email || !password) return toast("이메일과 비밀번호를 입력하세요.");
+        const errorBox = $("repLoginError");
+        function showRepError(message) {
+          if (errorBox) { errorBox.textContent = message; errorBox.style.display = "block"; }
+          else toast(message);
+        }
+        if (!email || !password) return showRepError("이메일과 비밀번호를 모두 입력하세요.");
+        if (errorBox) errorBox.style.display = "none";
         try {
-          const credentials = await authService().signInWithEmailAndPassword(email, password);
+          const credentials = await withTimeout(authService().signInWithEmailAndPassword(email, password), 15000, "Firebase 서버 인증 응답 시간이 초과되었습니다.");
           const user = credentials.user;
           // 대표 권한은 고정 UID로 검사합니다. DB 사용자명만으로 인증하지 않습니다.
           if (user.uid !== ADMIN_UID) {
             await authService().signOut();
             await ensureAuthUser().catch(() => {});
-            return toast("대표 계정 권한이 없습니다. Firebase UID를 확인하세요.");
+            return showRepError("이메일 로그인은 성공했지만 대표 계정 UID가 다릅니다.\nFirebase의 사용자 UID와 HTML ADMIN_UID를 다시 확인하세요.");
           }
           state.authUser = user;
           state.isRepresentative = true;
@@ -3613,7 +3620,19 @@
           toast("주둥아리 대표 계정으로 입장했습니다.");
         } catch (error) {
           console.error("대표 계정 인증 실패", error);
-          toast("대표 계정 로그인을 확인하세요: " + (error.code || "인증 오류"));
+          const code = error?.code || "unknown";
+          const explanations = {
+            "auth/invalid-credential": "이메일 또는 비밀번호가 일치하지 않습니다.",
+            "auth/wrong-password": "비밀번호가 일치하지 않습니다.",
+            "auth/user-not-found": "Firebase에 등록되지 않은 이메일입니다.",
+            "auth/invalid-email": "이메일 형식이 올바르지 않습니다.",
+            "auth/operation-not-allowed": "Firebase Authentication에서 이메일/비밀번호 로그인 기능이 꺼져 있습니다.",
+            "auth/unauthorized-domain": "Firebase Authentication의 승인된 도메인에 현재 사이트 주소가 등록되지 않았습니다.",
+            "auth/network-request-failed": "네트워크 연결 또는 Firebase 접속을 확인하세요.",
+            "auth/too-many-requests": "로그인 시도가 많아 일시적으로 제한되었습니다. 잠시 후 다시 시도하세요.",
+            "auth/user-disabled": "Firebase에서 사용 중지된 계정입니다."
+          };
+          showRepError("대표 로그인 실패 (" + code + ")\n" + (explanations[code] || error?.message || "Firebase 설정 또는 브라우저 콘솔을 확인하세요."));
         }
       }, "confirm"]]);
     }
