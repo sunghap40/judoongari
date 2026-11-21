@@ -1442,9 +1442,16 @@
     .big-cta small { font-size:12px; font-weight:700; color:#e2f7e9; }
     .secondary-actions { margin-top:10px; }
 
-    .court-manage-tools {display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;}
+    .court-manage-tools {display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px;}
     .court-manage-tools button {padding:12px 6px;min-height:48px;border-radius:10px;font-weight:900;background:#fff;border:2px solid #7db6a0;color:#15543e;}
-    .court-manage-tools button:first-child {border-color:#dd9d87;color:#983f22;background:#fff9f5;}
+    #swapCourtsBtn {background:linear-gradient(135deg,#f97316,#e11d48);border:2px solid #dc4b24;color:#fff;box-shadow:0 5px 14px #e65b343d;font-size:16px;}
+    #swapCourtsBtn:focus-visible {outline:3px solid #fbbf24;outline-offset:3px;}
+    .easy-court .easy-court-actions .easy-return-btn,.easy-waiting-card .easy-return-btn {background:#f59e0b;color:#382000;border:2px solid #d97706;box-shadow:0 3px 9px #d9770630;font-weight:950;}
+    .easy-court .easy-court-actions .easy-return-btn {flex:1 0 100%;min-height:38px;}
+    .player-card.resting,.player-card.resting.male,.player-card.resting.female,.player-card.resting.guest {background:#ffe14b!important;color:#3c2e08!important;border:2px solid #d9a400!important;box-shadow:0 3px 10px #b38f2930;opacity:1;}
+    .player-card.resting .meta-chip {background:#fff4b1;color:#493800;}
+    .player-card.resting:disabled {cursor:default;opacity:1;}
+    .resting-note {font-size:11px;font-weight:950;color:#604300;}
     /* 경기 시작 전 선수 교체 */
     .easy-court .easy-court-actions {display:flex;gap:7px;align-items:stretch;margin-top:3px;}
     .easy-court .easy-court-actions button {flex:1;min-width:0;margin:0;padding:9px 5px;}
@@ -1795,7 +1802,6 @@
           <div class="simple-section-head"><h2>코트 현황</h2><span>배정 후 경기 시작</span></div>
           <div id="easyCourts" class="easy-courts"></div>
           <div id="courtManageTools" class="court-manage-tools hidden">
-            <button type="button" id="resetCourtAssignmentsBtn">↩ 전체 대기 복귀</button>
             <button type="button" id="swapCourtsBtn">⇄ 코트 변경</button>
           </div>
           <div id="easyWaitingGroups" class="easy-waiting-groups hidden" aria-live="polite"></div>
@@ -2439,7 +2445,7 @@
         const label = me.status === "PLAY" ? "경기 중" : me.status === "WAIT" ? "경기 대기 중" : me.status === "REST" ? "휴식 중" : me.status === "EXCLUDED" ? "매칭 제외" : "미입장";
         $("homeMyStatus").textContent = label;
         $("homeMyStatus").classList.toggle("is-away", me.status === "DEFAULT" || me.status === "REST" || me.status === "EXCLUDED");
-        $("homeMyDescription").textContent = me.status === "PLAY" ? "현재 경기 중입니다. 종료 후 대기하거나 쉬실 수 있습니다." : me.status === "WAIT" ? "현재 경기 배정을 기다리고 있습니다." : me.status === "EXCLUDED" ? "매칭에서 제외된 상태입니다. 운영진에게 복귀를 요청하세요." : "쉬는 중에는 대기 명단에서 빠지며, 대기 복귀를 누르면 다시 참여합니다.";
+        $("homeMyDescription").textContent = me.status === "PLAY" ? "현재 경기 중입니다. 종료 후 대기하거나 쉬실 수 있습니다." : me.status === "WAIT" ? "현재 경기 배정을 기다리고 있습니다." : me.status === "EXCLUDED" ? "매칭에서 제외된 상태입니다. 운영진에게 복귀를 요청하세요." : "쉬는 동안에도 대기 화면에 노란색으로 표시되며, 대기 복귀를 누르면 다시 배정 대상에 포함됩니다.";
         $("restBtn").classList.toggle("hidden", me.status !== "WAIT");
         $("returnBtn").classList.toggle("hidden", me.status !== "REST" && me.status !== "DEFAULT");
       } else {
@@ -2457,7 +2463,7 @@
         const names = (game ? game.players : ids).map(id => state.members[id]?.name).filter(Boolean);
         const status = game ? "경기 중" : ready ? "시작 준비 완료" : ids.length ? `${ids.length}/4명 배정` : "비어 있음";
         const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>`
-          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? '<span class="court-action-label"><span>선수</span><span>수정</span></span>' : '<span class="court-action-label"><span>선수</span><span>배정</span></span>'}</button>${ready ? `<button type="button" data-easy-start="${court}"><span class="court-action-label"><span>경기</span><span>시작</span></span></button>` : ""}</div>`
+          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? '<span class="court-action-label"><span>선수</span><span>수정</span></span>' : '<span class="court-action-label"><span>선수</span><span>배정</span></span>'}</button>${ready ? `<button type="button" data-easy-start="${court}"><span class="court-action-label"><span>경기</span><span>시작</span></span></button>` : ""}${ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}">↩ 대기로 가기</button>` : ""}</div>`
           : ready ? `<span class="court-hint">경기 시작 대기</span>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
         const playerDisplay = names.length
           ? `<div class="court-player-grid" aria-label="${court}번 코트 배정 선수">${names.map((name, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(name)}</strong></div>`).join("")}</div>`
@@ -2469,6 +2475,7 @@
       root.querySelectorAll('[data-easy-edit]').forEach(btn=>btn.addEventListener('click',()=>openPreGameCourtEditor(Number(btn.dataset.easyEdit))));
       root.querySelectorAll('[data-easy-start]').forEach(btn=>btn.addEventListener('click',()=>startAssignedGame(Number(btn.dataset.easyStart))));
       root.querySelectorAll('[data-easy-end]').forEach(btn=>btn.addEventListener('click',()=>finishGame(btn.dataset.easyEnd)));
+      root.querySelectorAll('[data-court-return]').forEach(btn=>btn.addEventListener('click',()=>returnCourtToWaiting(Number(btn.dataset.courtReturn))));
       $("courtManageTools")?.classList.toggle("hidden", !state.isAdmin);
       renderEasyWaitingGroups();
     }
@@ -2492,7 +2499,7 @@
         const canRaise = state.isAdmin && openings.length > 0;
         return `<div class="easy-waiting-card"><strong>${group.court}번 대기 코트 (${group.ids.length}/4명)</strong>
           <div class="court-player-grid" aria-label="${group.court}번 대기 코트 선수">${group.ids.map((id, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(state.members[id]?.name || "미등록 회원")}</strong></div>`).join("")}</div>
-          ${state.isAdmin ? `<div class="easy-waiting-actions"><button type="button" class="easy-edit-btn" data-easy-wait-edit="${group.court}">선수 수정</button><button type="button" data-easy-raise="${group.court}" ${canRaise ? "" : "disabled"}>${canRaise ? "▲ 경기 코트로 올리기" : "빈 경기 코트가 없습니다"}</button></div>` : `<p>운영진이 경기 코트로 배정합니다.</p>`}
+          ${state.isAdmin ? `<div class="easy-waiting-actions"><button type="button" class="easy-edit-btn" data-easy-wait-edit="${group.court}">선수 수정</button><button type="button" data-easy-raise="${group.court}" ${canRaise ? "" : "disabled"}>${canRaise ? "▲ 경기 코트로 올리기" : "빈 경기 코트가 없습니다"}</button><button type="button" class="easy-return-btn" data-court-return="${group.court}">↩ 대기로 가기</button></div>` : `<p>운영진이 경기 코트로 배정합니다.</p>`}
           </div>`;
       }).join("");
       root.querySelectorAll('[data-easy-raise]').forEach(button => button.addEventListener('click', () => {
@@ -2501,6 +2508,7 @@
       root.querySelectorAll('[data-easy-wait-edit]').forEach(button => button.addEventListener('click', () => {
         openPreGameCourtEditor(Number(button.dataset.easyWaitEdit));
       }));
+      root.querySelectorAll('[data-court-return]').forEach(button => button.addEventListener('click', () => returnCourtToWaiting(Number(button.dataset.courtReturn))));
     }
 
     function openEasyRaiseCourt(waitCourt) {
@@ -2584,6 +2592,20 @@
       });
     }
 
+    function returnCourtToWaiting(court) {
+      if (!state.isAdmin) return noAdminAccess();
+      if (!ALL_COURTS.includes(court)) return toast("코트 번호를 확인하세요.");
+      if (activeGames().some(game => Number(game.court) === court)) return toast("경기 중인 코트는 대기로 복귀할 수 없습니다.");
+      const ids = [...(state.courtAssignments?.[court] || [])];
+      if (!ids.length) return toast("대기로 돌릴 선수가 없습니다.");
+      if (!confirm(`${court}번 코트 배정 ${ids.length}명을 대기 화면으로 되돌릴까요?\n다른 코트 배정과 진행 중 경기는 유지됩니다.`)) return;
+      delete state.courtAssignments[court];
+      ids.forEach(id => state.selected.delete(id));
+      scheduleAssignmentSave();
+      renderAll();
+      toast(`${court}번 코트 ${ids.length}명이 대기 화면으로 복귀했습니다.`);
+    }
+
     function resetCourtAssignments() {
       if (!state.isAdmin) return noAdminAccess();
       const ids = assignedPlayerIds();
@@ -2660,6 +2682,7 @@
         String(member.grade || "D").toLowerCase(),
         member.isGuest ? "guest" : "",
         member.status === "EXCLUDED" ? "excluded" : "",
+        member.status === "REST" ? "resting" : "",
         state.selected.has(member.id) ? "selected" : ""
       ].join(" ");
     }
@@ -2709,9 +2732,12 @@
         <span class="player-meta">
           <span class="meta-chip dark">${displayGames}게임</span>
           <span class="meta-chip">${escapeHtml(member.grade)}</span>
-        </span>
+        </span>${member.status === "REST" ? '<span class="resting-note">잠시 쉬는 중</span>' : ""}
       `;
-      if (selectable) {
+      if (member.status === "REST") {
+        div.disabled = true;
+        div.title = "휴식 중 · 대기 복귀 후 배정 가능합니다.";
+      } else if (selectable) {
         div.addEventListener("click", () => {
           state.selected = new Set(playablePartnerIds(member.id));
           renderWaiting();
@@ -2770,7 +2796,7 @@
       });
 
       const waiting = memberList()
-        .filter((m) => (m.status === "WAIT" || m.status === "EXCLUDED") && !assignedIds.has(m.id))
+        .filter((m) => (m.status === "WAIT" || m.status === "EXCLUDED" || m.status === "REST") && !assignedIds.has(m.id))
         .sort((a, b) => {
           const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
           const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
@@ -4180,7 +4206,7 @@
       Object.keys(state.courtAssignments).forEach(c => { state.courtAssignments[c] = state.courtAssignments[c].filter(id => id !== userId); if (!state.courtAssignments[c].length) delete state.courtAssignments[c]; });
       scheduleAssignmentSave();
       renderAll();
-      toast("휴식 중입니다. 대기 복귀를 누르면 다시 참여할 수 있어요.");
+      toast("대기 화면에 노란색 휴식 표시로 남습니다. 대기 복귀를 누르면 경기 배정에 참여할 수 있어요.");
     }
 
     async function returnCurrentUser() {
@@ -4412,7 +4438,6 @@
       });
       $("memberSearch").addEventListener("input", renderMembers);
       $("memberAdminMenuBtn")?.addEventListener("click", openAdminMenu);
-      $("resetCourtAssignmentsBtn")?.addEventListener("click", resetCourtAssignments);
       $("swapCourtsBtn")?.addEventListener("click", openSwapCourts);
       $("statPersonalBtn").addEventListener("click", renderStats);
       $("statGameBtn").addEventListener("click", () => toast("게임별 기록은 게임 종료 데이터 기준으로 집계됩니다."));
