@@ -1446,8 +1446,12 @@
     .court-manage-tools button {padding:12px 6px;min-height:48px;border-radius:10px;font-weight:900;background:#fff;border:2px solid #7db6a0;color:#15543e;}
     #swapCourtsBtn {background:linear-gradient(135deg,#f97316,#e11d48);border:2px solid #dc4b24;color:#fff;box-shadow:0 5px 14px #e65b343d;font-size:16px;}
     #swapCourtsBtn:focus-visible {outline:3px solid #fbbf24;outline-offset:3px;}
-    .easy-court .easy-court-actions .easy-return-btn,.easy-waiting-card .easy-return-btn {background:#f59e0b;color:#382000;border:2px solid #d97706;box-shadow:0 3px 9px #d9770630;font-weight:950;}
-    .easy-court .easy-court-actions .easy-return-btn {flex:1 0 100%;min-height:38px;}
+    .easy-waiting-card .easy-return-btn {background:#f59e0b;color:#382000;border:2px solid #d97706;box-shadow:0 3px 9px #d9770630;font-weight:950;}
+    .easy-court .easy-court-top {display:flex;align-items:flex-start;justify-content:space-between;gap:5px;min-width:0;}
+    .easy-court .easy-court-top h3 {flex:1;min-width:0;}
+    .easy-court .easy-court-top .easy-return-btn {flex:none;min-height:30px;max-width:58%;margin:0;padding:5px 8px;background:#f59e0b;color:#382000;border:1.5px solid #d97706;border-radius:8px;box-shadow:0 2px 6px #d9770630;font-size:clamp(10px,2.5vw,12px);line-height:1.2;font-weight:950;white-space:nowrap;}
+    .easy-court .easy-court-top .easy-return-btn:hover {background:#fbbf24;}
+    .easy-court .easy-court-top .easy-return-btn:focus-visible {outline:3px solid #1456c8;outline-offset:2px;}
     .player-card.resting,.player-card.resting.male,.player-card.resting.female,.player-card.resting.guest {background:#ffe14b!important;color:#3c2e08!important;border:2px solid #d9a400!important;box-shadow:0 3px 10px #b38f2930;opacity:1;}
     .player-card.resting .meta-chip {background:#fff4b1;color:#493800;}
     .player-card.resting:disabled {cursor:default;opacity:1;}
@@ -2463,12 +2467,12 @@
         const names = (game ? game.players : ids).map(id => state.members[id]?.name).filter(Boolean);
         const status = game ? "경기 중" : ready ? "시작 준비 완료" : ids.length ? `${ids.length}/4명 배정` : "비어 있음";
         const button = game ? `<button type="button" data-easy-end="${escapeAttr(game.id)}">경기 종료</button>`
-          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? '<span class="court-action-label"><span>선수</span><span>수정</span></span>' : '<span class="court-action-label"><span>선수</span><span>배정</span></span>'}</button>${ready ? `<button type="button" data-easy-start="${court}"><span class="court-action-label"><span>경기</span><span>시작</span></span></button>` : ""}${ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}">↩ 대기로 가기</button>` : ""}</div>`
+          : state.isAdmin ? `<div class="easy-court-actions"><button type="button" class="easy-edit-btn" data-easy-edit="${court}">${ids.length ? '<span class="court-action-label"><span>선수</span><span>수정</span></span>' : '<span class="court-action-label"><span>선수</span><span>배정</span></span>'}</button>${ready ? `<button type="button" data-easy-start="${court}"><span class="court-action-label"><span>경기</span><span>시작</span></span></button>` : ""}</div>`
           : ready ? `<span class="court-hint">경기 시작 대기</span>` : `<span class="court-hint">${ids.length ? "선수 추가 배정 필요" : "선수 배정 대기"}</span>`;
         const playerDisplay = names.length
           ? `<div class="court-player-grid" aria-label="${court}번 코트 배정 선수">${names.map((name, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(name)}</strong></div>`).join("")}</div>`
           : `<div class="court-player-empty">배정된 선수가 없습니다</div>`;
-        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><h3>${court}번 코트</h3><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
+        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><div class="easy-court-top"><h3>${court}번 코트</h3>${state.isAdmin && !game && ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}" aria-label="${court}번 코트 선수 대기로 가기">↩ 대기로 가기</button>` : ""}</div><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
       }).join("");
       const root = $("easyCourts");
       root.innerHTML = html;
