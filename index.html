@@ -1953,7 +1953,7 @@
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
     // 대표 계정: Firebase Authentication에서 생성한 사용자 UID를 아래에 설정하세요.
     // 현재 값은 기존 Firebase 운영자 UID이며 신규 대표 계정이면 반드시 변경해야 합니다.
-    const ADMIN_UID = "kWohYQoefnftmdYT8x77Beyrqln2";
+    const ADMIN_UID = "fIbEdqw2UzWxDrOLWkilOb3v5ha2";
     const LOCAL_ADMIN_ID = "judoong";
     const LOCAL_ADMIN_PASSWORD = "1111";
     const FIREBASE_CONFIG = {
@@ -2039,6 +2039,15 @@
       return firebase.auth();
     }
 
+    // 인증 단계에서 영구 대기하지 않도록 보호합니다.
+    function withTimeout(promise, ms, message) {
+      let timer;
+      return Promise.race([
+        Promise.resolve(promise),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })
+      ]).finally(() => clearTimeout(timer));
+    }
+
     async function ensureAuthUser() {
       if (!hasFirebaseConfig() || !window.firebase?.auth) return null;
       const auth = authService();
@@ -2046,7 +2055,7 @@
         state.authUser = auth.currentUser;
         return auth.currentUser;
       }
-      const credential = await auth.signInAnonymously();
+      const credential = await withTimeout(auth.signInAnonymously(), 9000, "Firebase 익명 인증 시간이 초과되었습니다. Authentication의 익명 로그인 사용 설정을 확인하세요.");
       state.authUser = credential.user;
       return credential.user;
     }
@@ -2071,7 +2080,7 @@
     async function db(path, options = {}) {
       const cleanPath = path.replace(/^\/+/, "");
       const params = new URLSearchParams(options.query || {});
-      const token = await authToken().catch((error) => {
+      const token = await withTimeout(authToken(), 10000, "Firebase 인증 응답 지연").catch((error) => {
         console.warn("auth token unavailable", error);
         return "";
       });
@@ -2080,14 +2089,22 @@
       const { query: _query, ...fetchOptions } = options;
       const url = `${DB_URL}/${cleanPath}.json${query}`;
       let res;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
       try {
         res = await fetch(url, {
           ...fetchOptions,
+          signal: controller.signal,
           headers: { "Content-Type": "application/json", ...(fetchOptions.headers || {}) }
         });
       } catch (networkError) {
         console.error("DB fetch network error:", url, networkError);
-        throw new Error(`DB 서버에 연결하지 못했습니다 (네트워크 차단/오프라인 가능성). 대상: ${DB_URL}`);
+        if (networkError.name === "AbortError") {
+          throw new Error("Firebase 데이터 요청 시간이 초과되었습니다. 인터넷 연결 및 Firebase Database 규칙을 확인하세요.");
+        }
+        throw new Error("Firebase 데이터베이스 연결 실패. 네트워크 또는 프로젝트 설정을 확인하세요.");
+      } finally {
+        clearTimeout(timeoutId);
       }
       if (!res.ok) {
         let detail = "";
@@ -4674,19 +4691,33 @@
 
     async function init() {
       bindEvents();
+      const loginCountEl = $("registeredCount");
+      const initialStatusTimer = setTimeout(() => {
+        if (loginCountEl && loginCountEl.textContent.includes("등록 회원 확인 중")) {
+          loginCountEl.textContent = "서버 연결이 지연되고 있습니다. 잠시 후 연결 오류 또는 회원 수가 표시됩니다.";
+        }
+      }, 6000);
       const today = new Date();
       $("statEndDate").value = today.toISOString().slice(0, 10);
       $("statStartDate").value = today.toISOString().slice(0, 8) + "01";
+      // 로그인 버튼은 DB 문제와 무관하게 사용할 수 있도록 유지합니다.
+      // 회원 수는 초기 조회에 실패하면 오류와 재시도 버튼을 표시합니다.
       await loadData({ gamesMode: "today" }).catch(showDbError);
+      clearTimeout(initialStatusTimer);
       cleanupStaleGames()
         .then(() => loadData({ gamesMode: "today" }))
         .catch((error) => console.warn("stale game cleanup failed", error));
       const savedId = sessionStorage.getItem("clubUserId");
       // Firebase는 로그인 정보를 브라우저에 보존하므로 새로고침 시 대표 세션을 다시 확인합니다.
       let restoredAuth = null;
-      try { restoredAuth = await new Promise(resolve => {
-        const unsub = authService().onAuthStateChanged(user => { unsub(); resolve(user); }, () => resolve(null));
-      }); } catch(e) { console.warn("대표 세션 복구 실패",e); }
+      try {
+        restoredAuth = await withTimeout(new Promise(resolve => {
+          let unsub = () => {};
+          unsub = authService().onAuthStateChanged(user => {
+            unsub(); resolve(user);
+          }, () => resolve(null));
+        }), 7000, "대표 로그인 세션 확인 지연");
+      } catch(e) { console.warn("대표 세션 복구 실패",e); }
       if (sessionStorage.getItem("clubRepresentative") === "1" && restoredAuth &&
           !restoredAuth.isAnonymous && restoredAuth.uid === ADMIN_UID) {
         state.authUser = restoredAuth;
@@ -4720,7 +4751,7 @@
         finally { syncBusy = false; }
       }, 20000);
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden && !syncBusy && !assignmentsDirty) 
+        if (!document.hidden && !syncBusy && !assignmentsDirty) {
           refreshSilent();
           if (!liveSyncActive) startRealtimeSync();
         }
