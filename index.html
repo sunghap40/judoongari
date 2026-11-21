@@ -1450,6 +1450,8 @@
     .easy-court .easy-court-top {display:flex;align-items:flex-start;justify-content:space-between;gap:5px;min-width:0;}
     .easy-court .easy-court-top h3 {flex:1;min-width:0;}
     .easy-court .easy-court-top .easy-return-btn {flex:none;min-height:30px;max-width:58%;margin:0;padding:5px 8px;background:#f59e0b;color:#382000;border:1.5px solid #d97706;border-radius:8px;box-shadow:0 2px 6px #d9770630;font-size:clamp(10px,2.5vw,12px);line-height:1.2;font-weight:950;white-space:nowrap;}
+    .easy-court .easy-court-top .easy-live-change-btn {flex:none;min-height:30px;max-width:58%;margin:0;padding:5px 8px;background:linear-gradient(135deg,#f97316,#e11d48);color:#fff;border:1.5px solid #dc4b24;border-radius:8px;box-shadow:0 3px 8px #dc4b2440;font-size:clamp(10px,2.5vw,12px);line-height:1.2;font-weight:950;white-space:nowrap;}
+    .easy-court.is-playing .easy-court-top .easy-live-change-btn {background:linear-gradient(135deg,#f97316,#e11d48);color:#fff;}
     .easy-court .easy-court-top .easy-return-btn:hover {background:#fbbf24;}
     .easy-court .easy-court-top .easy-return-btn:focus-visible {outline:3px solid #1456c8;outline-offset:2px;}
     .player-card.resting,.player-card.resting.male,.player-card.resting.female,.player-card.resting.guest {background:#ffe14b!important;color:#3c2e08!important;border:2px solid #d9a400!important;box-shadow:0 3px 10px #b38f2930;opacity:1;}
@@ -1941,6 +1943,7 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script>
     const DB_URL = "https://badminton-89c25-default-rtdb.asia-southeast1.firebasedatabase.app";
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
@@ -2298,6 +2301,85 @@
       return true;
     }
 
+    // v26: 실시간 구독으로 30명 이상 접속 시에도 대기/코트/경기 시작을 함께 갱신합니다.
+    // 읽기 전용 리스너이며 기존 REST 저장/운영진 권한 처리는 유지합니다.
+    let liveSubscriptions = [];
+    let liveRenderTimer = null;
+    let liveSyncActive = false;
+    function queueLiveRender() {
+      clearTimeout(liveRenderTimer);
+      liveRenderTimer = setTimeout(() => {
+        if (document.hidden) return;
+        renderAll();
+      }, 110);
+    }
+    function startRealtimeSync() {
+      if (liveSyncActive || !window.firebase?.database) return false;
+      try {
+        const database = firebase.database(firebaseApp());
+        const listen = (ref, eventType, callback) => {
+          ref.on(eventType, callback, error => {
+            console.warn("Firebase 실시간 구독 오류:", error);
+            // 연결 중단시 주기적 동기화가 보완합니다.
+            liveSyncActive = false;
+          });
+          liveSubscriptions.push(() => ref.off(eventType, callback));
+        };
+
+        // 모든 회원에게 대기/휴식/경기 상태를 동일하게 보여줍니다.
+        listen(database.ref("members"), "value", snapshot => {
+          if (pendingStatusChanges.size) return;
+          const raw = snapshot.val();
+          if (!raw) return;
+          state.members = normalizeMembers(raw);
+          const ownId = sessionStorage.getItem("clubUserId");
+          if (ownId && state.members[ownId]) {
+            state.currentUser = state.members[ownId];
+            // 기존 회원 관리에서 지정한 운영진 권한을 그대로 적용.
+            state.isAdmin = state.currentUser.admin === true;
+          }
+          queueLiveRender();
+        });
+
+        // 경기 시작 전 배정까지 각 회원의 대기 화면과 코트 현황에 반영.
+        listen(database.ref("courtAssignments"), "value", snapshot => {
+          if (assignmentsDirty) return; // 운영진이 저장하는 도중 로컬 배정 덮어쓰기 방지
+          const remote = snapshot.val() || {};
+          const version = JSON.stringify(remote);
+          if (version === state.assignmentVersion) return;
+          state.courtAssignments = remote;
+          state.assignmentVersion = version;
+          lastQueuedAssignments = version;
+          queueLiveRender();
+        });
+
+        // 게임별 child 이벤트는 기존 게임 기록 전체를 매번 다운로드하지 않습니다.
+        // 최근 48시간 게임을 구독하고, 오래된 진행 중 경기는 보조 새로고침이 처리합니다.
+        const fromKey = `game_${Date.now() - 48 * 60 * 60 * 1000}`;
+        const gamesRef = database.ref("games").orderByKey().startAt(fromKey);
+        const updateGame = snapshot => {
+          const value = snapshot.val();
+          if (!value) return;
+          state.games[snapshot.key] = value;
+          queueLiveRender();
+        };
+        listen(gamesRef, "child_added", updateGame);
+        listen(gamesRef, "child_changed", updateGame);
+        listen(gamesRef, "child_removed", snapshot => {
+          delete state.games[snapshot.key];
+          queueLiveRender();
+        });
+        liveSyncActive = true;
+        return true;
+      } catch (error) {
+        console.warn("실시간 동기화를 시작하지 못했습니다. 주기적 갱신 사용:", error);
+        liveSubscriptions.forEach(stop => { try { stop(); } catch (_) {} });
+        liveSubscriptions = [];
+        liveSyncActive = false;
+        return false;
+      }
+    }
+
     async function refreshSilent() {
       await loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
     }
@@ -2472,7 +2554,7 @@
         const playerDisplay = names.length
           ? `<div class="court-player-grid" aria-label="${court}번 코트 배정 선수">${names.map((name, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(name)}</strong></div>`).join("")}</div>`
           : `<div class="court-player-empty">배정된 선수가 없습니다</div>`;
-        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><div class="easy-court-top"><h3>${court}번 코트</h3>${state.isAdmin && !game && ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}" aria-label="${court}번 코트 선수 대기로 가기">↩ 대기로 가기</button>` : ""}</div><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
+        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><div class="easy-court-top"><h3>${court}번 코트</h3>${state.isAdmin && game ? `<button type="button" class="easy-live-change-btn" data-live-change="${court}" aria-label="${court}번 진행 중 경기 코트 변경">⇄ 코트 변경</button>` : state.isAdmin && !game && ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}" aria-label="${court}번 코트 선수 대기로 가기">↩ 대기로 가기</button>` : ""}</div><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
       }).join("");
       const root = $("easyCourts");
       root.innerHTML = html;
@@ -2480,6 +2562,7 @@
       root.querySelectorAll('[data-easy-start]').forEach(btn=>btn.addEventListener('click',()=>startAssignedGame(Number(btn.dataset.easyStart))));
       root.querySelectorAll('[data-easy-end]').forEach(btn=>btn.addEventListener('click',()=>finishGame(btn.dataset.easyEnd)));
       root.querySelectorAll('[data-court-return]').forEach(btn=>btn.addEventListener('click',()=>returnCourtToWaiting(Number(btn.dataset.courtReturn))));
+      root.querySelectorAll('[data-live-change]').forEach(btn=>btn.addEventListener('click',()=>openSwapCourts(Number(btn.dataset.liveChange))));
       $("courtManageTools")?.classList.toggle("hidden", !state.isAdmin);
       renderEasyWaitingGroups();
     }
@@ -2622,27 +2705,85 @@
       toast(`${ids.size}명이 대기 화면으로 복귀했습니다.`);
     }
 
-    function openSwapCourts() {
+    function openSwapCourts(preferredCourt = null) {
       if (!state.isAdmin) return noAdminAccess();
-      const courts = ALL_COURTS.filter(c => (state.courtAssignments[c] || []).length && !activeGames().some(g => Number(g.court) === c));
-      if (!courts.length) return toast("변경할 경기 전 배정 코트가 없습니다.");
-      showModal("코트 변경", `<p class="court-edit-help">선수 배정 전체를 다른 코트로 옮기거나 두 코트의 배정을 서로 교환합니다. 진행 중인 경기는 변경할 수 없습니다.</p>
-        <div class="field full"><label for="swapFrom">현재 코트</label><select id="swapFrom">${courts.map(c => `<option value="${c}">${c}번 코트</option>`).join("")}</select></div>
-        <div class="field full"><label for="swapTo">변경할 코트</label><select id="swapTo">${ALL_COURTS.map(c => `<option value="${c}">${c}번 코트</option>`).join("")}</select></div>`, [
-        ["취소", closeModal], ["코트 변경", () => {
+      const currentGames = new Map(activeGames().map(game => [Number(game.court), game]));
+      const occupiedCourts = ALL_COURTS.filter(c => (state.courtAssignments[c] || []).length || currentGames.has(c));
+      if (!occupiedCourts.length) return toast("변경할 코트 배정이나 진행 중 경기가 없습니다.");
+      const selectedCourt = occupiedCourts.includes(Number(preferredCourt)) ? Number(preferredCourt) : occupiedCourts[0];
+      showModal("코트 변경", `<p class="court-edit-help">경기 시작 전 배정뿐 아니라 <strong>진행 중인 경기</strong>도 코트를 변경할 수 있습니다.<br>두 코트 모두 경기 중이면 경기의 코트 위치만 교환하며, 선수·경기 시작시간·경기 횟수는 유지됩니다.</p>
+        <div class="field full"><label for="swapFrom">현재 코트</label><select id="swapFrom">${occupiedCourts.map(c => `<option value="${c}" ${c === selectedCourt ? "selected" : ""}>${c}번 코트 ${currentGames.has(c) ? "(경기 중)" : "(시작 전 배정)"}</option>`).join("")}</select></div>
+        <div class="field full"><label for="swapTo">변경할 코트</label><select id="swapTo">${ALL_COURTS.map(c => `<option value="${c}">${c}번 코트${currentGames.has(c) ? " (경기 중)" : (state.courtAssignments[c] || []).length ? " (시작 전 배정)" : " (비어 있음)"}</option>`).join("")}</select></div>`, [
+        ["취소", closeModal], ["코트 변경", async () => {
           const from = Number($("swapFrom").value), to = Number($("swapTo").value);
           if (from === to) return toast("다른 코트를 선택하세요.");
-          if (activeGames().some(g => Number(g.court) === to)) return toast("진행 중인 코트로는 옮길 수 없습니다.");
-          const fromIds = [...(state.courtAssignments[from] || [])];
-          const toIds = [...(state.courtAssignments[to] || [])];
-          if (!fromIds.length) return toast("이동할 선수가 없습니다.");
-          if (toIds.length) state.courtAssignments[from] = toIds;
-          else delete state.courtAssignments[from];
-          state.courtAssignments[to] = fromIds;
-          scheduleAssignmentSave();
-          closeModal(); renderAll();
-          toast(toIds.length ? `${from}번과 ${to}번 코트 배정을 교환했습니다.` : `${from}번 배정을 ${to}번으로 옮겼습니다.`);
+          const sourceGame = activeGames().find(g => Number(g.court) === from);
+          const targetGame = activeGames().find(g => Number(g.court) === to);
+          const sourceIds = [...(state.courtAssignments[from] || [])];
+          const targetIds = [...(state.courtAssignments[to] || [])];
+          if (!sourceGame && !sourceIds.length) return toast("이동할 선수나 경기가 없습니다.");
+          if ((sourceGame && targetIds.length) || (!sourceGame && targetGame)) {
+            return toast("진행 중인 경기와 시작 전 배정은 서로 교환할 수 없습니다. 다른 코트를 선택하세요.");
+          }
+          // 경기 시작 후에는 대기코트로 옮기지 않도록 제한합니다.
+          if ((sourceGame || targetGame) && (!isGameCourt(from) || !isGameCourt(to))) {
+            return toast("진행 중인 경기는 1~5번 경기 코트끼리만 변경할 수 있습니다.");
+          }
+          const detail = sourceGame && targetGame ? `${from}번과 ${to}번의 진행 중 경기를 서로 교환` :
+            sourceGame ? `${from}번에서 진행 중인 경기를 ${to}번 코트로 이동` :
+            targetIds.length ? `${from}번과 ${to}번의 경기 전 배정을 교환` : `${from}번 배정을 ${to}번으로 이동`;
+          if (!confirm(`${detail}할까요?\n선수와 경기 기록은 변경되지 않습니다.`)) return;
+          if (sourceGame) {
+            try {
+              // 실제 DB의 최신 상태를 다시 확인하여 이미 완료되거나 다른 코트로 이동한 경기를 덮어쓰지 않습니다.
+              const [liveSource, liveTarget, liveAssignments] = await Promise.all([
+                dbGet(`games/${sourceGame.id}`),
+                targetGame ? dbGet(`games/${targetGame.id}`) : Promise.resolve(null),
+                dbGet("courtAssignments")
+              ]);
+              if (!liveSource || liveSource.status !== "PLAY" || Number(liveSource.court) !== from ||
+                  (targetGame && (!liveTarget || liveTarget.status !== "PLAY" || Number(liveTarget.court) !== to))) {
+                await loadData();
+                return toast("다른 기기에서 경기 상태가 변경됐습니다. 다시 확인하세요.");
+              }
+              if ((liveAssignments?.[to] || []).length) {
+                await loadData();
+                return toast("이동할 코트에 경기 전 배정이 있습니다. 다른 코트를 선택하세요.");
+              }
+              const updates = { [`games/${sourceGame.id}/court`]: to };
+              if (targetGame) updates[`games/${targetGame.id}/court`] = from;
+              else {
+                // 대상 코트에 다른 진행 중 경기가 없는지도 확인합니다.
+                const latest = await dbGet("games");
+                if (Object.values(latest || {}).some(g => g?.status === "PLAY" && Number(g.court) === to && g.id !== sourceGame.id)) {
+                  await loadData();
+                  return toast("대상 코트에서 다른 경기가 시작됐습니다. 다시 확인하세요.");
+                }
+              }
+              await dbPatch("/", updates);
+              // 저장이 성공해야 로컬 화면을 갱신합니다.
+              state.games[sourceGame.id] = { ...state.games[sourceGame.id], court: to };
+              if (targetGame) state.games[targetGame.id] = { ...state.games[targetGame.id], court: from };
+              closeModal();
+              renderAll();
+              toast(targetGame ? `${from}번과 ${to}번 진행 중 경기 코트를 교환했습니다.` : `진행 중 경기를 ${from}번에서 ${to}번 코트로 변경했습니다.`);
+            } catch (error) {
+              console.error("진행 중 코트 변경 저장 실패", error);
+              toast("코트 변경 저장에 실패했습니다. 잠시 후 다시 시도하세요.");
+            }
+          } else {
+            if (targetIds.length) state.courtAssignments[from] = targetIds;
+            else delete state.courtAssignments[from];
+            state.courtAssignments[to] = sourceIds;
+            scheduleAssignmentSave();
+            closeModal(); renderAll();
+            toast(targetIds.length ? `${from}번과 ${to}번 코트 배정을 교환했습니다.` : `${from}번 배정을 ${to}번으로 옮겼습니다.`);
+          }
         }, "confirm"]]);
+      const destination = $("swapTo");
+      const suggested = GAME_COURTS.find(c => c !== selectedCourt && !currentGames.has(c) && !(state.courtAssignments[c] || []).length)
+        || ALL_COURTS.find(c => c !== selectedCourt && !currentGames.has(c) && !(state.courtAssignments[c] || []).length);
+      if (suggested) destination.value = String(suggested);
     }
 
     function noAdminAccess() {
@@ -4478,15 +4619,22 @@
         state.isAdmin = false;
         sessionStorage.removeItem("clubAdmin");
       }
+      // 실시간 리스너가 우선이고, 20초 폴링은 네트워크 끊김/오래된 경기 보완용입니다.
+      await ensureAuthUser().catch(error => console.warn("Firebase 인증 확인:", error));
+      startRealtimeSync();
       let syncBusy = false;
       state.unsubscribeTimer = setInterval(async () => {
         if (document.hidden || syncBusy || pendingStatusChanges.size || assignmentsDirty) return;
+        if (!liveSyncActive) startRealtimeSync();
         syncBusy = true;
         try { await loadData({ gamesMode: state.view === "stats" ? "none" : "today" }); }
         finally { syncBusy = false; }
-      }, 4000);
+      }, 20000);
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden && !syncBusy && !assignmentsDirty) refreshSilent();
+        if (!document.hidden && !syncBusy && !assignmentsDirty) {
+          refreshSilent();
+          if (!liveSyncActive) startRealtimeSync();
+        }
       });
     }
 
