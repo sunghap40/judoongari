@@ -2333,9 +2333,10 @@
       }
       state.currentUser = member;
       sessionStorage.setItem("clubUserId", member.id);
-      // 회원 명단의 운영진 표시는 인증 권한과 분리합니다.
-      state.isAdmin = false;
-      sessionStorage.removeItem("clubAdmin");
+      // v20 호환: 회원관리에서 운영진으로 지정된 회원은 기존처럼 운영진 메뉴를 사용합니다.
+      state.isAdmin = member.admin === true;
+      if (state.isAdmin) sessionStorage.setItem("clubAdmin", "1");
+      else sessionStorage.removeItem("clubAdmin");
       await dbPatch(`members/${member.id}`, { status: "WAIT", updatedAt: now() });
       await loadData();
       showApp();
@@ -2360,6 +2361,8 @@
         createdAt: now(), updatedAt: now()
       };
       state.currentUser = guest;
+      state.isAdmin = false;
+      sessionStorage.removeItem("clubAdmin");
       sessionStorage.setItem("clubUserId", id);
       await dbPut(`members/${id}`, guest);
       await loadData();
@@ -2395,7 +2398,7 @@
     }
 
     function openQuickMatch() {
-      if (!state.isAdmin) return openAdminModal();
+      if (!state.isAdmin) return noAdminAccess();
       showModal("새 경기 만들기", `
         <p style="margin:0 0 12px;color:#52605b;line-height:1.6">경기 방식을 고르세요. 대기 중인 4명을 비어 있는 코트에 배정합니다. 배정 후 코트의 <strong>경기 시작</strong>을 눌러 주세요.</p>
         <div class="admin-menu">
@@ -2412,7 +2415,7 @@
     }
 
     function openManualAssign() {
-      if (!state.isAdmin) return openAdminModal();
+      if (!state.isAdmin) return noAdminAccess();
       setView("waiting");
       $("courtDetails").open = true;
       $("waitingList").scrollIntoView({behavior:"smooth",block:"center"});
@@ -2501,7 +2504,7 @@
     }
 
     function openEasyRaiseCourt(waitCourt) {
-      if (!state.isAdmin) return openAdminModal();
+      if (!state.isAdmin) return noAdminAccess();
       if (!WAIT_COURTS.includes(waitCourt) || !(state.courtAssignments[waitCourt] || []).length) {
         return toast("이 대기팀은 이미 이동했거나 비어 있습니다.");
       }
@@ -2519,7 +2522,7 @@
 
     // 경기 시작 전 로컬 배정만 편집합니다. 진행 중인 경기 기록은 수정하지 않습니다.
     function openPreGameCourtEditor(court, targetSlot = null) {
-      if (!state.isAdmin) return openAdminModal();
+      if (!state.isAdmin) return noAdminAccess();
       if (!ALL_COURTS.includes(court)) return;
       if (activeGames().some(g => Number(g.court) === court)) {
         toast("진행 중인 경기는 선수 변경이 불가능합니다.");
@@ -4363,12 +4366,12 @@
       $("memberLoginBtn").addEventListener("click", enterAsMember);
       $("guestLoginBtn").addEventListener("click", () => openGuestModal($("loginName").value));
       $("loginAdminBtn").addEventListener("click", openAdminModal);
-      $("adminBtn").addEventListener("click", openAdminModal);
+      $("adminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else openAdminModal(); });
       $("syncBtn").addEventListener("click", refreshData);
       $("helpBtn").addEventListener("click", openBeginnerHelp);
       $("quickMatchBtn").addEventListener("click", openQuickMatch);
       $("quickGenderBtn").addEventListener("click", () => {
-        if (!state.isAdmin) return openAdminModal();
+        if (!state.isAdmin) return noAdminAccess();
         autoMatch("gender");
       });
       $("manualAssignBtn").addEventListener("click", openManualAssign);
@@ -4437,7 +4440,14 @@
       const savedId = sessionStorage.getItem("clubUserId");
       if (savedId && state.members[savedId]) {
         state.currentUser = state.members[savedId];
+        // Refresh permission from current member record instead of a stale session flag.
+        state.isAdmin = state.currentUser.admin === true;
+        if (state.isAdmin) sessionStorage.setItem("clubAdmin", "1");
+        else sessionStorage.removeItem("clubAdmin");
         showApp();
+      } else {
+        state.isAdmin = false;
+        sessionStorage.removeItem("clubAdmin");
       }
       let syncBusy = false;
       state.unsubscribeTimer = setInterval(async () => {
