@@ -1442,6 +1442,9 @@
     .big-cta small { font-size:12px; font-weight:700; color:#e2f7e9; }
     .secondary-actions { margin-top:10px; }
 
+    .court-manage-tools {display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;}
+    .court-manage-tools button {padding:12px 6px;min-height:48px;border-radius:10px;font-weight:900;background:#fff;border:2px solid #7db6a0;color:#15543e;}
+    .court-manage-tools button:first-child {border-color:#dd9d87;color:#983f22;background:#fff9f5;}
     /* 경기 시작 전 선수 교체 */
     .easy-court .easy-court-actions {display:flex;gap:7px;align-items:stretch;margin-top:3px;}
     .easy-court .easy-court-actions button {flex:1;min-width:0;margin:0;padding:9px 5px;}
@@ -1791,6 +1794,10 @@
         <section class="simple-court-section" aria-label="코트 현황">
           <div class="simple-section-head"><h2>코트 현황</h2><span>배정 후 경기 시작</span></div>
           <div id="easyCourts" class="easy-courts"></div>
+          <div id="courtManageTools" class="court-manage-tools hidden">
+            <button type="button" id="resetCourtAssignmentsBtn">↩ 전체 대기 복귀</button>
+            <button type="button" id="swapCourtsBtn">⇄ 코트 변경</button>
+          </div>
           <div id="easyWaitingGroups" class="easy-waiting-groups hidden" aria-live="polite"></div>
           <details id="courtDetails" class="simple-expander"><summary>전체 코트 배치 · 대기 코트 <span>보기</span></summary>
             <div class="court-grid" id="courtGrid"></div>
@@ -1977,7 +1984,9 @@
       adminUid: ADMIN_UID,
       memberTab: "member",
       view: "waiting",
-      unsubscribeTimer: null
+      unsubscribeTimer: null,
+      assignmentVersion: "",
+      assignmentSaving: false
     };
 
     const $ = (id) => document.getElementById(id);
@@ -2088,7 +2097,7 @@
         level: value.level || grade,
         gender: String(value.gender || "남").trim(),
         birthYear: value.birthYear || value.birth || "",
-        status: ["WAIT", "PLAY", "DEFAULT", "EXCLUDED"].includes(value.status) ? value.status : "DEFAULT",
+        status: ["WAIT", "PLAY", "DEFAULT", "REST", "EXCLUDED"].includes(value.status) ? value.status : "DEFAULT",
         isGuest,
         guest: isGuest,
         admin: Boolean(value.admin || value.role === "admin" || value.isAdmin),
@@ -2221,15 +2230,42 @@
       toast("DB 연결을 확인하세요.");
     }
 
+    // 경기 시작 전의 배정도 모든 회원 기기에 공유합니다.
+    let assignmentsDirty = false;
+    let lastQueuedAssignments = "";
+    let assignmentsSaveTimer = null;
+    let assignmentSaveChain = Promise.resolve();
+    const assignmentsJson = () => JSON.stringify(state.courtAssignments || {});
+    function scheduleAssignmentSave() {
+      assignmentsDirty = true;
+      lastQueuedAssignments = assignmentsJson();
+      clearTimeout(assignmentsSaveTimer);
+      assignmentsSaveTimer = setTimeout(() => {
+        const snapshot = JSON.parse(assignmentsJson());
+        assignmentSaveChain = assignmentSaveChain.catch(() => {}).then(async () => {
+          try {
+            await dbPut("courtAssignments", Object.keys(snapshot).length ? snapshot : {});
+            state.assignmentVersion = JSON.stringify(snapshot);
+          } catch (e) {
+            console.error("코트 배정 저장 실패", e);
+            toast("코트 배정 동기화에 실패했습니다. 새로고침하여 확인하세요.");
+          } finally {
+            if (assignmentsJson() === JSON.stringify(snapshot)) assignmentsDirty = false;
+          }
+        });
+      }, 200);
+    }
+
     async function loadData(options = {}) {
       const { gamesMode = "today" } = options;
       let members;
       try {
-        const [rawMembers, games, pairs] = await Promise.all([
+        const [rawMembers, games, pairs, remoteAssignments] = await Promise.all([
           dbGet("members"),
           gamesMode === "all" ? dbGet("games").catch(() => ({})) :
             gamesMode === "today" ? loadTodayGames() : Promise.resolve(null),
-          dbGet("partnerPairs").catch(() => ({}))
+          dbGet("partnerPairs").catch(() => ({})),
+          dbGet("courtAssignments").catch(() => null)
         ]);
         members = rawMembers;
         if (members === null) members = await seedMembers(false);
@@ -2239,12 +2275,21 @@
           state.gamesLoadedAll = gamesMode === "all";
         }
         state.partnerPairs = pairs || {};
+        if (!assignmentsDirty && remoteAssignments !== null) {
+          state.courtAssignments = remoteAssignments || {};
+          state.assignmentVersion = assignmentsJson();
+          lastQueuedAssignments = state.assignmentVersion;
+        }
       } catch (error) {
         showDbError(error);
         return false;
       }
       renderAll();
       return true;
+    }
+
+    async function refreshSilent() {
+      await loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
     }
 
     async function refreshData() {
@@ -2288,10 +2333,9 @@
       }
       state.currentUser = member;
       sessionStorage.setItem("clubUserId", member.id);
-      if (member.admin) {
-        state.isAdmin = true;
-        sessionStorage.setItem("clubAdmin", "1");
-      }
+      // 회원 명단의 운영진 표시는 인증 권한과 분리합니다.
+      state.isAdmin = false;
+      sessionStorage.removeItem("clubAdmin");
       await dbPatch(`members/${member.id}`, { status: "WAIT", updatedAt: now() });
       await loadData();
       showApp();
@@ -2389,12 +2433,12 @@
       const me = state.members[id];
       if (me) {
         $("homeGreeting").textContent = `${me.name}님, 즐거운 경기하세요!`;
-        const label = me.status === "PLAY" ? "경기 중" : me.status === "WAIT" ? "경기 대기 중" : me.status === "EXCLUDED" ? "매칭 제외" : "휴식·미입장";
+        const label = me.status === "PLAY" ? "경기 중" : me.status === "WAIT" ? "경기 대기 중" : me.status === "REST" ? "휴식 중" : me.status === "EXCLUDED" ? "매칭 제외" : "미입장";
         $("homeMyStatus").textContent = label;
-        $("homeMyStatus").classList.toggle("is-away", me.status === "DEFAULT" || me.status === "EXCLUDED");
-        $("homeMyDescription").textContent = me.status === "PLAY" ? "현재 경기 중입니다. 종료 후 대기하거나 쉬실 수 있습니다." : me.status === "WAIT" ? "현재 경기 배정을 기다리고 있습니다." : me.status === "EXCLUDED" ? "매칭에서 제외된 상태입니다. 운영진에게 복귀를 요청하세요." : "경기에 참여하려면 경기 대기하기를 누르세요.";
-        $("restBtn").classList.toggle("hidden", me.status === "DEFAULT" || me.status === "EXCLUDED" || me.status === "PLAY");
-        $("returnBtn").classList.toggle("hidden", me.status === "WAIT" || me.status === "PLAY" || me.status === "EXCLUDED");
+        $("homeMyStatus").classList.toggle("is-away", me.status === "DEFAULT" || me.status === "REST" || me.status === "EXCLUDED");
+        $("homeMyDescription").textContent = me.status === "PLAY" ? "현재 경기 중입니다. 종료 후 대기하거나 쉬실 수 있습니다." : me.status === "WAIT" ? "현재 경기 배정을 기다리고 있습니다." : me.status === "EXCLUDED" ? "매칭에서 제외된 상태입니다. 운영진에게 복귀를 요청하세요." : "쉬는 중에는 대기 명단에서 빠지며, 대기 복귀를 누르면 다시 참여합니다.";
+        $("restBtn").classList.toggle("hidden", me.status !== "WAIT");
+        $("returnBtn").classList.toggle("hidden", me.status !== "REST" && me.status !== "DEFAULT");
       } else {
         $("homeGreeting").textContent = "함께 즐거운 경기해요!";
         $("homeMyStatus").textContent = "회원 확인 필요";
@@ -2422,6 +2466,7 @@
       root.querySelectorAll('[data-easy-edit]').forEach(btn=>btn.addEventListener('click',()=>openPreGameCourtEditor(Number(btn.dataset.easyEdit))));
       root.querySelectorAll('[data-easy-start]').forEach(btn=>btn.addEventListener('click',()=>startAssignedGame(Number(btn.dataset.easyStart))));
       root.querySelectorAll('[data-easy-end]').forEach(btn=>btn.addEventListener('click',()=>finishGame(btn.dataset.easyEnd)));
+      $("courtManageTools")?.classList.toggle("hidden", !state.isAdmin);
       renderEasyWaitingGroups();
     }
 
@@ -2536,6 +2581,45 @@
       });
     }
 
+    function resetCourtAssignments() {
+      if (!state.isAdmin) return noAdminAccess();
+      const ids = assignedPlayerIds();
+      if (!ids.size) return toast("경기 전 배정된 선수가 없습니다.");
+      if (!confirm(`경기 시작 전 배정된 ${ids.size}명을 모두 대기 명단으로 되돌릴까요?\n이미 진행 중인 경기는 유지됩니다.`)) return;
+      state.courtAssignments = {};
+      state.selected.clear();
+      scheduleAssignmentSave();
+      renderAll();
+      toast(`${ids.size}명이 대기 화면으로 복귀했습니다.`);
+    }
+
+    function openSwapCourts() {
+      if (!state.isAdmin) return noAdminAccess();
+      const courts = ALL_COURTS.filter(c => (state.courtAssignments[c] || []).length && !activeGames().some(g => Number(g.court) === c));
+      if (!courts.length) return toast("변경할 경기 전 배정 코트가 없습니다.");
+      showModal("코트 변경", `<p class="court-edit-help">선수 배정 전체를 다른 코트로 옮기거나 두 코트의 배정을 서로 교환합니다. 진행 중인 경기는 변경할 수 없습니다.</p>
+        <div class="field full"><label for="swapFrom">현재 코트</label><select id="swapFrom">${courts.map(c => `<option value="${c}">${c}번 코트</option>`).join("")}</select></div>
+        <div class="field full"><label for="swapTo">변경할 코트</label><select id="swapTo">${ALL_COURTS.map(c => `<option value="${c}">${c}번 코트</option>`).join("")}</select></div>`, [
+        ["취소", closeModal], ["코트 변경", () => {
+          const from = Number($("swapFrom").value), to = Number($("swapTo").value);
+          if (from === to) return toast("다른 코트를 선택하세요.");
+          if (activeGames().some(g => Number(g.court) === to)) return toast("진행 중인 코트로는 옮길 수 없습니다.");
+          const fromIds = [...(state.courtAssignments[from] || [])];
+          const toIds = [...(state.courtAssignments[to] || [])];
+          if (!fromIds.length) return toast("이동할 선수가 없습니다.");
+          if (toIds.length) state.courtAssignments[from] = toIds;
+          else delete state.courtAssignments[from];
+          state.courtAssignments[to] = fromIds;
+          scheduleAssignmentSave();
+          closeModal(); renderAll();
+          toast(toIds.length ? `${from}번과 ${to}번 코트 배정을 교환했습니다.` : `${from}번 배정을 ${to}번으로 옮겼습니다.`);
+        }, "confirm"]]);
+    }
+
+    function noAdminAccess() {
+      showModal("권한 없음", `<p style="line-height:1.7">운영진 메뉴입니다.<br>일반회원은 접근할 수 없습니다.</p>`, [["확인", closeModal, "confirm"]]);
+    }
+
     function showApp() {
       $("loginPage").classList.add("hidden");
       $("appPage").classList.remove("hidden");
@@ -2635,6 +2719,7 @@
     }
 
     function renderWaiting() {
+      if (state.isAdmin && assignmentsJson() !== lastQueuedAssignments) scheduleAssignmentSave();
       const grid = $("courtGrid");
       const assignedIds = assignedPlayerIds();
       grid.innerHTML = "";
@@ -2737,6 +2822,7 @@
     }
 
     function assignGroupToCourt(members, court) {
+      if (!state.isAdmin) return noAdminAccess();
       const ids = members.slice(0, 4).map((member) => member.id);
       Object.keys(state.courtAssignments || {}).forEach((key) => {
         state.courtAssignments[key] = (state.courtAssignments[key] || []).filter((id) => !ids.includes(id));
@@ -2747,6 +2833,7 @@
     }
 
     function unassignPlayerFromCourt(memberId, court) {
+      if (!state.isAdmin) return noAdminAccess();
       if (!state.courtAssignments?.[court]) return;
       state.courtAssignments[court] = state.courtAssignments[court].filter((id) => id !== memberId);
       if (!state.courtAssignments[court].length) delete state.courtAssignments[court];
@@ -2951,6 +3038,7 @@
       return null;
     }
     function autoMatch(mode) {
+      if (!state.isAdmin) return noAdminAccess();
       const picked = pickAutoMatch(mode);
       if (!picked || picked.length < 4) {
         toast("조건에 맞는 대기자가 4명 이상 필요합니다.");
@@ -3325,7 +3413,7 @@
         setView("members");
         return;
       }
-      openAdminModal("members");
+      noAdminAccess();
     }
 
     function backToAdminMenu() {
@@ -3334,6 +3422,7 @@
     }
 
     function openAdminMenu() {
+      if (!state.isAdmin) return noAdminAccess();
       showModal("운영진 메뉴", `
         <div class="admin-menu">
           <button class="admin-menu-btn members-menu" id="adminMembersMenu">회원관리</button>
@@ -3827,6 +3916,7 @@
     }
 
     function openCourtModal(memberId = null) {
+      if (!state.isAdmin) return noAdminAccess();
       const selectedId = memberId || Array.from(state.selected)[0];
       const member = state.members[selectedId];
       if (!member) {
@@ -3907,6 +3997,7 @@
     }
 
     async function assignPlayerToCourt(memberId, court) {
+      if (!state.isAdmin) return noAdminAccess();
       if (isGameCourt(court) && activeGames().some((g) => Number(g.court) === court)) {
         toast(`${court} court is already playing.`);
         return;
@@ -4003,6 +4094,7 @@
     }
 
     async function startGame(court, assignedPlayers = null) {
+      if (!state.isAdmin) return noAdminAccess();
       const players = assignedPlayers || Array.from(state.selected);
       if (players.length !== 4) return toast("Assign 4 players.");
       if (!isGameCourt(court)) return toast("게임 시작은 1~5번 게임코트에서만 가능합니다.");
@@ -4026,6 +4118,7 @@
         return;
       }
       delete state.courtAssignments[court];
+      scheduleAssignmentSave();
       state.selected.clear();
       closeModal();
       await loadData();
@@ -4034,6 +4127,7 @@
     }
     const finishingGames = new Set();
     async function finishGame(gameId) {
+      if (!state.isAdmin) return noAdminAccess();
       const game = state.games[gameId];
       if (!game || game.status !== "PLAY" || finishingGames.has(gameId)) return;
       finishingGames.add(gameId);
@@ -4055,6 +4149,7 @@
       // 오늘 경기 횟수 캐시도 새 객체 참조로 무효화합니다.
       state.games = { ...state.games, [gameId]: { ...game, status: "DONE", endedAt } };
       const promotedFrom = promoteNextWaitingCourt(Number(game.court));
+      if (promotedFrom) scheduleAssignmentSave();
       renderAll();
       toast(promotedFrom ? `${promotedFrom}번 대기팀이 ${game.court}번 코트로 이동했습니다.` : "게임이 종료되었습니다.");
       try {
@@ -4077,16 +4172,20 @@
     async function restCurrentUser() {
       const userId = sessionStorage.getItem("clubUserId");
       if (!userId || !state.members[userId]) return toast("입장 정보가 없습니다.");
-      await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
-      await loadData();
-      toast("휴식 상태로 변경했습니다.");
+      await dbPatch(`members/${userId}`, { status: "REST", updatedAt: now() });
+      if (state.members[userId]) state.members[userId].status = "REST";
+      Object.keys(state.courtAssignments).forEach(c => { state.courtAssignments[c] = state.courtAssignments[c].filter(id => id !== userId); if (!state.courtAssignments[c].length) delete state.courtAssignments[c]; });
+      scheduleAssignmentSave();
+      renderAll();
+      toast("휴식 중입니다. 대기 복귀를 누르면 다시 참여할 수 있어요.");
     }
 
     async function returnCurrentUser() {
       const userId = sessionStorage.getItem("clubUserId");
       if (!userId || !state.members[userId]) return toast("입장 정보가 없습니다.");
       await dbPatch(`members/${userId}`, { status: "WAIT", updatedAt: now() });
-      await loadData();
+      if (state.members[userId]) state.members[userId].status = "WAIT";
+      renderAll();
       toast("대기 상태로 복귀했습니다.");
     }
 
@@ -4273,8 +4372,8 @@
         autoMatch("gender");
       });
       $("manualAssignBtn").addEventListener("click", openManualAssign);
-      $("bottomMembersBtn").addEventListener("click", () => { if (state.isAdmin) setView("members"); else openAdminModal("members"); });
-      $("bottomAdminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else openAdminModal(); });
+      $("bottomMembersBtn").addEventListener("click", () => { if (state.isAdmin) setView("members"); else noAdminAccess(); });
+      $("bottomAdminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else noAdminAccess(); });
       $("logoutBtn").addEventListener("click", logout);
       $("restBtn").addEventListener("click", restCurrentUser);
       $("returnBtn").addEventListener("click", returnCurrentUser);
@@ -4310,6 +4409,8 @@
       });
       $("memberSearch").addEventListener("input", renderMembers);
       $("memberAdminMenuBtn")?.addEventListener("click", openAdminMenu);
+      $("resetCourtAssignmentsBtn")?.addEventListener("click", resetCourtAssignments);
+      $("swapCourtsBtn")?.addEventListener("click", openSwapCourts);
       $("statPersonalBtn").addEventListener("click", renderStats);
       $("statGameBtn").addEventListener("click", () => toast("게임별 기록은 게임 종료 데이터 기준으로 집계됩니다."));
       $("statDailyBtn").addEventListener("click", () => toast("일자별 기록은 선택 기간 기준으로 표시됩니다."));
@@ -4338,10 +4439,16 @@
         state.currentUser = state.members[savedId];
         showApp();
       }
-      state.unsubscribeTimer = setInterval(() => {
-        if (document.hidden || pendingStatusChanges.size || $("modalRoot").className !== "hidden") return;
-        loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
-      }, 30000);
+      let syncBusy = false;
+      state.unsubscribeTimer = setInterval(async () => {
+        if (document.hidden || syncBusy || pendingStatusChanges.size || assignmentsDirty) return;
+        syncBusy = true;
+        try { await loadData({ gamesMode: state.view === "stats" ? "none" : "today" }); }
+        finally { syncBusy = false; }
+      }, 4000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && !syncBusy && !assignmentsDirty) refreshSilent();
+      });
     }
 
     init();
