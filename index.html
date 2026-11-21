@@ -105,6 +105,9 @@
     }
 
 
+    .representative-login-btn { width:100%; min-height:52px; margin-top:13px; border-radius:12px; background:linear-gradient(115deg,#9b3d12,#e67b23); color:#fff; font-weight:950; font-size:16px; box-shadow:0 8px 20px #b5572833; }
+    .representative-banner { margin:0 0 12px; padding:11px 13px; border-radius:11px; background:#fff0d9; border:1px solid #eac38f; color:#82420a; font-weight:950; display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .representative-banner small { font-weight:700; font-size:11px; }
     .login-card {
       position: relative;
       padding: 34px 38px 40px;
@@ -1755,6 +1758,7 @@
         <button id="memberLoginBtn" class="primary-btn">입장하기 →</button>
         <div class="divider">또는</div>
         <button id="guestLoginBtn" class="guest-btn">게스트 입장</button>
+        <button id="representativeLoginBtn" class="representative-login-btn" type="button">👑 주둥아리 대표 계정으로 입장</button>
         <div class="admin-link">
           <button id="loginAdminBtn" class="icon-link" title="운영자 설정">운영자</button>
         </div>
@@ -1947,6 +1951,8 @@
   <script>
     const DB_URL = "https://badminton-89c25-default-rtdb.asia-southeast1.firebasedatabase.app";
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
+    // 대표 계정: Firebase Authentication에서 생성한 사용자 UID를 아래에 설정하세요.
+    // 현재 값은 기존 Firebase 운영자 UID이며 신규 대표 계정이면 반드시 변경해야 합니다.
     const ADMIN_UID = "fIbEdqw2UzWxDrOLWkilOb3v5ha2";
     const LOCAL_ADMIN_ID = "judoong";
     const LOCAL_ADMIN_PASSWORD = "1111";
@@ -1993,7 +1999,8 @@
       courtAssignments: {},
       currentUser: null,
       authUser: null,
-      isAdmin: sessionStorage.getItem("clubAdmin") === "1",
+      isAdmin: false,
+      isRepresentative: false,
       adminUid: ADMIN_UID,
       memberTab: "member",
       view: "waiting",
@@ -2336,7 +2343,7 @@
           if (ownId && state.members[ownId]) {
             state.currentUser = state.members[ownId];
             // 기존 회원 관리에서 지정한 운영진 권한을 그대로 적용.
-            state.isAdmin = state.currentUser.admin === true;
+            state.isAdmin = state.isRepresentative || state.currentUser.admin === true;
           }
           queueLiveRender();
         });
@@ -2463,6 +2470,19 @@
     }
 
     async function logout() {
+      if (state.isRepresentative) {
+        state.isRepresentative = false;
+        state.isAdmin = false;
+        state.currentUser = null;
+        sessionStorage.removeItem("clubRepresentative");
+        sessionStorage.removeItem("clubAdmin");
+        sessionStorage.removeItem("clubUserId");
+        try { await authService().signOut(); await ensureAuthUser(); } catch(e) { console.warn("대표 로그아웃:", e); }
+        $("appPage").classList.add("hidden");
+        $("loginPage").classList.remove("hidden");
+        toast("대표 계정에서 로그아웃했습니다.");
+        return;
+      }
       const userId = sessionStorage.getItem("clubUserId");
       if (userId && state.members[userId]) {
         await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
@@ -3517,7 +3537,21 @@
         ["닫기", closeModal]
       ]);
     }
+    function renderRepresentativeBanner() {
+      const view = $("waitingView");
+      if (!view) return;
+      let banner = $("representativeBanner");
+      if (!state.isRepresentative) { banner?.remove(); return; }
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "representativeBanner";
+        banner.className = "representative-banner";
+        banner.innerHTML = '<span>👑 주둥아리 대표 · 게임 운영 중</span><small>회원 화면과 실시간 공유</small>';
+        view.prepend(banner);
+      }
+    }
     function renderAll() {
+      renderRepresentativeBanner();
       if (state.view === "waiting") renderWaiting();
       else if (state.view === "playing") renderPlaying();
       else if (state.view === "gradeMatch") renderGradeMatch();
@@ -3526,6 +3560,45 @@
       // Login count is also needed when the stats view is not visible.
       const list = Object.values(state.members || {});
       $("registeredCount").textContent = `회원 ${list.filter((m) => !m.isGuest).length}명 · 게스트 ${list.filter((m) => m.isGuest).length}명`;
+    }
+
+    // 대표 계정은 Firebase Authentication의 이메일/비밀번호 로그인으로 검증합니다.
+    // 브라우저 HTML에 대표 비밀번호를 저장하지 않습니다.
+    function openRepresentativeLogin() {
+      showModal("주둥아리 대표 로그인", `
+        <p style="line-height:1.6;margin-top:0">대표 계정에서 퀵배정·경기 시작·코트 변경을 운영하면 접속 회원의 화면에도 Firebase로 공유됩니다.</p>
+        <div class="field full"><label for="repEmail">대표 계정 이메일</label><input id="repEmail" type="email" autocomplete="username" placeholder="Firebase에 등록된 대표 이메일"></div>
+        <div class="field full"><label for="repPassword">비밀번호</label><input id="repPassword" type="password" autocomplete="current-password" placeholder="대표 계정 비밀번호"></div>
+        <p style="font-size:12px;color:#63717c;line-height:1.5">대표 계정은 Firebase Authentication에 생성하고, 아래 설정의 대표 UID와 연결해야 합니다.</p>
+      `, [["취소", closeModal], ["대표 계정 입장", async () => {
+        const email = $("repEmail").value.trim();
+        const password = $("repPassword").value;
+        if (!email || !password) return toast("이메일과 비밀번호를 입력하세요.");
+        try {
+          const credentials = await authService().signInWithEmailAndPassword(email, password);
+          const user = credentials.user;
+          // 대표 권한은 고정 UID로 검사합니다. DB 사용자명만으로 인증하지 않습니다.
+          if (user.uid !== ADMIN_UID) {
+            await authService().signOut();
+            await ensureAuthUser().catch(() => {});
+            return toast("대표 계정 권한이 없습니다. Firebase UID를 확인하세요.");
+          }
+          state.authUser = user;
+          state.isRepresentative = true;
+          state.isAdmin = true;
+          state.currentUser = null;
+          sessionStorage.removeItem("clubUserId");
+          sessionStorage.setItem("clubRepresentative", "1");
+          sessionStorage.setItem("clubAdmin", "1");
+          closeModal();
+          showApp();
+          renderAll();
+          toast("주둥아리 대표 계정으로 입장했습니다.");
+        } catch (error) {
+          console.error("대표 계정 인증 실패", error);
+          toast("대표 계정 로그인을 확인하세요: " + (error.code || "인증 오류"));
+        }
+      }, "confirm"]]);
     }
 
     function openAdminModal(targetView = "") {
@@ -4537,6 +4610,7 @@
       $("memberLoginBtn").addEventListener("click", enterAsMember);
       $("guestLoginBtn").addEventListener("click", () => openGuestModal($("loginName").value));
       $("loginAdminBtn").addEventListener("click", openAdminModal);
+      $("representativeLoginBtn").addEventListener("click", openRepresentativeLogin);
       $("adminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else openAdminModal(); });
       $("syncBtn").addEventListener("click", refreshData);
       $("helpBtn").addEventListener("click", openBeginnerHelp);
@@ -4608,7 +4682,21 @@
         .then(() => loadData({ gamesMode: "today" }))
         .catch((error) => console.warn("stale game cleanup failed", error));
       const savedId = sessionStorage.getItem("clubUserId");
-      if (savedId && state.members[savedId]) {
+      // Firebase는 로그인 정보를 브라우저에 보존하므로 새로고침 시 대표 세션을 다시 확인합니다.
+      let restoredAuth = null;
+      try { restoredAuth = await new Promise(resolve => {
+        const unsub = authService().onAuthStateChanged(user => { unsub(); resolve(user); }, () => resolve(null));
+      }); } catch(e) { console.warn("대표 세션 복구 실패",e); }
+      if (sessionStorage.getItem("clubRepresentative") === "1" && restoredAuth &&
+          !restoredAuth.isAnonymous && restoredAuth.uid === ADMIN_UID) {
+        state.authUser = restoredAuth;
+        state.isRepresentative = true;
+        state.isAdmin = true;
+        state.currentUser = null;
+        sessionStorage.removeItem("clubUserId");
+        showApp();
+        renderAll();
+      } else if (savedId && state.members[savedId]) {
         state.currentUser = state.members[savedId];
         // Refresh permission from current member record instead of a stale session flag.
         state.isAdmin = state.currentUser.admin === true;
@@ -4618,6 +4706,7 @@
       } else {
         state.isAdmin = false;
         sessionStorage.removeItem("clubAdmin");
+        sessionStorage.removeItem("clubRepresentative");
       }
       // 실시간 리스너가 우선이고, 20초 폴링은 네트워크 끊김/오래된 경기 보완용입니다.
       await ensureAuthUser().catch(error => console.warn("Firebase 인증 확인:", error));
