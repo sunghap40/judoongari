@@ -1753,6 +1753,7 @@
         <button id="memberLoginBtn" class="primary-btn">입장하기 →</button>
         <div class="divider">또는</div>
         <button id="guestLoginBtn" class="guest-btn">게스트 입장</button>
+        <button id="representativeLoginBtn" class="guest-btn" type="button" style="margin-top:10px;background:linear-gradient(115deg,#b45309,#ea580c);color:#fff;border:none;">👑 주둥아리 대표 계정으로 입장</button>
         <div class="admin-link">
           <button id="loginAdminBtn" class="icon-link" title="운영자 설정">운영자</button>
         </div>
@@ -1773,7 +1774,7 @@
     <main class="content">
       <section id="waitingView" class="view home-view">
         <div class="simple-welcome">
-          <div class="simple-topline"><span>주둥아리 배드민턴</span><button id="helpBtn" class="simple-help" type="button">사용법 ?</button></div>
+          <div class="simple-topline"><span>주둥아리 배드민턴 · 실시간 현황</span><button id="helpBtn" class="simple-help" type="button">사용법 ?</button></div>
           <h1 id="homeGreeting">오늘도 즐거운 경기!</h1>
           <div class="simple-metrics" aria-label="오늘의 경기 현황">
             <div><strong id="metricAttending">0</strong><span>참석</span></div>
@@ -1941,10 +1942,11 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script>
     const DB_URL = "https://badminton-89c25-default-rtdb.asia-southeast1.firebasedatabase.app";
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
-    const ADMIN_UID = "fIbEdqw2UzWxDrOLWkilOb3v5ha2";
+    const ADMIN_UID = "4lNFEc07StbUkENLfpUyzrPj03m1";
     const LOCAL_ADMIN_ID = "judoong";
     const LOCAL_ADMIN_PASSWORD = "1111";
     const FIREBASE_CONFIG = {
@@ -2032,6 +2034,8 @@
     async function ensureAuthUser() {
       if (!hasFirebaseConfig() || !window.firebase?.auth) return null;
       const auth = authService();
+      // 저장된 대표 이메일 인증을 먼저 복원한 뒤 익명 로그인 여부를 결정합니다.
+      await auth.authStateReady();
       if (auth.currentUser) {
         state.authUser = auth.currentUser;
         return auth.currentUser;
@@ -2298,6 +2302,50 @@
       return true;
     }
 
+    // Firebase 서버의 변경 알림을 받으면 회원 · 배정 · 경기 현황을 함께 그립니다.
+    // 읽기 권한이 부족하면 기존 주기적 조회로 대체합니다.
+    let realtimeRefreshTimer = null;
+    let realtimeUnsubscribers = [];
+    let realtimeReady = false;
+    function scheduleRealtimeRender() {
+      clearTimeout(realtimeRefreshTimer);
+      realtimeRefreshTimer = setTimeout(() => {
+        if (document.hidden) return;
+        renderAll();
+      }, 80);
+    }
+    function startRealtimeSync() {
+      if (!window.firebase?.database || realtimeUnsubscribers.length) return;
+      try {
+        const liveDb = firebaseApp().database();
+        const register = (path, onData) => {
+          const ref = liveDb.ref(path);
+          const handler = snap => { realtimeReady = true; onData(snap.val()); scheduleRealtimeRender(); };
+          const onError = error => { console.warn(`실시간 수신 제한 (${path}):`, error?.message || error); };
+          ref.on("value", handler, onError);
+          realtimeUnsubscribers.push(() => ref.off("value", handler));
+        };
+        register("members", raw => {
+          if (raw) state.members = normalizeMembers(raw);
+        });
+        register("courtAssignments", raw => {
+          if (assignmentsDirty) return;
+          state.courtAssignments = raw || {};
+          state.assignmentVersion = assignmentsJson();
+        });
+        register("games", raw => {
+          if (!raw) { state.games = {}; return; }
+          // 기존 v24와 동일한 표시 기준: 오늘 경기 + 진행 중인 경기를 보여줍니다.
+          const today = new Date().toISOString().slice(0, 10);
+          const activeOrToday = Object.fromEntries(Object.entries(raw).filter(([_, game]) =>
+            game && (game.status === "PLAY" || String(game.startedAt || "").slice(0, 10) === today)));
+          if (state.view !== "stats" || !state.gamesLoadedAll) state.games = activeOrToday;
+        });
+      } catch (error) {
+        console.warn("실시간 연결 설정 실패 - 자동 조회를 유지합니다:", error);
+      }
+    }
+
     async function refreshSilent() {
       await loadData({ gamesMode: state.view === "stats" ? "none" : "today" });
     }
@@ -2387,6 +2435,9 @@
       }
       sessionStorage.removeItem("clubUserId");
       sessionStorage.removeItem("clubAdmin");
+      if (authService().currentUser && !authService().currentUser.isAnonymous) {
+        await authService().signOut();
+      }
       state.isAdmin = false;
       state.currentUser = null;
       state.selected.clear();
@@ -3387,8 +3438,16 @@
       $("registeredCount").textContent = `회원 ${list.filter((m) => !m.isGuest).length}명 · 게스트 ${list.filter((m) => m.isGuest).length}명`;
     }
 
+    function openRepresentativeLogin() {
+      openAdminModal();
+      const email = $("adminEmail");
+      if (email) email.value = "judoongari@gmail.com";
+      const password = $("adminAuthPass");
+      if (password) password.focus();
+    }
+
     function openAdminModal(targetView = "") {
-      showModal("운영자 로그인", `
+      showModal("운영자 / 주둥아리 대표 로그인", `
         <div class="field full">
           <label for="adminEmail">Firebase Auth 이메일 또는 운영자 ID</label>
           <input id="adminEmail" type="text" placeholder="운영자 이메일 / ID (비워도 됨)">
@@ -4396,6 +4455,7 @@
       $("memberLoginBtn").addEventListener("click", enterAsMember);
       $("guestLoginBtn").addEventListener("click", () => openGuestModal($("loginName").value));
       $("loginAdminBtn").addEventListener("click", openAdminModal);
+      $("representativeLoginBtn").addEventListener("click", openRepresentativeLogin);
       $("adminBtn").addEventListener("click", () => { if (state.isAdmin) openAdminMenu(); else openAdminModal(); });
       $("syncBtn").addEventListener("click", refreshData);
       $("helpBtn").addEventListener("click", openBeginnerHelp);
@@ -4466,25 +4526,34 @@
       cleanupStaleGames()
         .then(() => loadData({ gamesMode: "today" }))
         .catch((error) => console.warn("stale game cleanup failed", error));
+      await authService().authStateReady();
+      const signedInUser = authService().currentUser;
+      if (signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID) {
+        state.authUser = signedInUser;
+        state.isAdmin = true;
+        sessionStorage.setItem("clubAdmin", "1");
+        showApp();
+      }
       const savedId = sessionStorage.getItem("clubUserId");
       if (savedId && state.members[savedId]) {
         state.currentUser = state.members[savedId];
         // Refresh permission from current member record instead of a stale session flag.
-        state.isAdmin = state.currentUser.admin === true;
+        state.isAdmin = Boolean(signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID) || state.currentUser.admin === true;
         if (state.isAdmin) sessionStorage.setItem("clubAdmin", "1");
         else sessionStorage.removeItem("clubAdmin");
         showApp();
-      } else {
+      } else if (!(signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID)) {
         state.isAdmin = false;
         sessionStorage.removeItem("clubAdmin");
       }
+      startRealtimeSync();
       let syncBusy = false;
       state.unsubscribeTimer = setInterval(async () => {
         if (document.hidden || syncBusy || pendingStatusChanges.size || assignmentsDirty) return;
         syncBusy = true;
         try { await loadData({ gamesMode: state.view === "stats" ? "none" : "today" }); }
         finally { syncBusy = false; }
-      }, 4000);
+      }, 15000);
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden && !syncBusy && !assignmentsDirty) refreshSilent();
       });
