@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>주둥아리 배드민턴</title>
+  <title>주둥아리 배드민턴 v33</title>
   <style>
     :root {
       --bg: #071827;
@@ -4388,12 +4388,26 @@
     function describeGameWriteError(error) {
       const message = String(error?.message || error || "알 수 없는 오류");
       if (/permission_denied|permission denied|permission denied|401|403|Permission denied/i.test(message)) {
-        return "Firebase 쓰기 권한이 없습니다. badminton 프로젝트의 Realtime Database 보안 규칙과 대표 계정 권한을 확인하세요.";
+        return "Firebase 데이터 접근 권한이 없습니다. badminton 프로젝트의 Realtime Database 보안 규칙과 대표 계정 권한을 확인하세요.";
       }
       if (/시간이 초과|AbortError|network|Failed to fetch|연결 실패/i.test(message)) {
         return "Firebase 연결 시간이 초과됐습니다. 인터넷 연결을 확인하고 다시 시도하세요.";
       }
       return `Firebase 저장 오류: ${message.slice(0, 150)}`;
+    }
+
+    // 경기 시작에 실패하면 사라지는 토스트 대신 오류 원인을 남겨줍니다.
+    function showGameStartFailure(step, error, court, players) {
+      console.error(`[경기 시작 오류] ${step} · ${court}번 코트`, error);
+      const message = describeGameWriteError(error);
+      const detail = String(error?.message || error || "원인 정보 없음").slice(0, 450);
+      showModal("경기 시작 오류 확인", `
+        <p style="line-height:1.6"><strong>${court}번 코트에 ${players.length}명 배정된 상태</strong>에서 서버 처리에 실패했습니다.</p>
+        <p><strong>실패 단계:</strong> ${escapeHtml(step)}</p>
+        <p style="line-height:1.6;color:#9b2730;font-weight:800">${escapeHtml(message)}</p>
+        <details style="margin:12px 0"><summary>기술적 오류 내용 보기</summary><pre style="white-space:pre-wrap;word-break:break-all;background:#f5f5f5;padding:10px;border-radius:8px">${escapeHtml(detail)}</pre></details>
+        <p class="court-edit-help">기존 배정 인원은 유지합니다. Firebase Realtime Database 규칙이나 연결 프로젝트를 확인해야 할 수 있습니다.</p>
+      `, [["확인", closeModal]]);
     }
 
     async function startGame(court, assignedPlayers = null) {
@@ -4424,12 +4438,13 @@
           ]);
         } catch (error) {
           console.error("경기 시작 전 Firebase 조회 실패", error);
-          return toast(describeGameWriteError(error));
+          return showGameStartFailure("Firebase 배정·경기 조회", error, court, players);
         }
         const remoteIds = serverAssignments?.[court] || [];
         if (remoteIds.length && JSON.stringify(remoteIds) !== JSON.stringify(players)) {
           await loadData({ gamesMode: "today" });
-          return toast("다른 기기에서 코트 배정이 변경됐습니다. 화면 확인 후 다시 시작하세요.");
+          showModal("코트 배정 충돌", `<p>화면에는 ${court}번 코트에 ${players.length}명이 배정되어 있지만 Firebase에 저장된 명단은 다릅니다.</p><p class="court-edit-help">다른 운영진이 변경했거나 이전 배정 저장이 아직 끝나지 않았을 수 있습니다. 최신 상태를 확인한 뒤 다시 배정해 주세요.</p>`, [["확인", closeModal]]);
+          return;
         }
         if (Object.values(remoteGames || {}).some(g => g?.status === "PLAY" && Number(g.court) === court)) {
           await loadData({ gamesMode: "today" });
@@ -4451,7 +4466,7 @@
           await dbPatch("/", updates);
         } catch (error) {
           console.error("게임 시작 Firebase 쓰기 실패", error);
-          return toast(describeGameWriteError(error));
+          return showGameStartFailure("Firebase 경기 시작 저장", error, court, players);
         }
         // 저장 성공 이후에만 로컬 상태 변경. 실시간 구독은 나머지 모든 접속자에게 알립니다.
         delete state.courtAssignments[court];
