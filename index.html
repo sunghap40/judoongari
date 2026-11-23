@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>주둥아리 배드민턴 v33</title>
+  <title>주둥아리 배드민턴</title>
   <style>
     :root {
       --bg: #071827;
@@ -105,9 +105,6 @@
     }
 
 
-    .representative-login-btn { width:100%; min-height:52px; margin-top:13px; border-radius:12px; background:linear-gradient(115deg,#9b3d12,#e67b23); color:#fff; font-weight:950; font-size:16px; box-shadow:0 8px 20px #b5572833; }
-    .representative-banner { margin:0 0 12px; padding:11px 13px; border-radius:11px; background:#fff0d9; border:1px solid #eac38f; color:#82420a; font-weight:950; display:flex; gap:8px; align-items:center; justify-content:space-between; }
-    .representative-banner small { font-weight:700; font-size:11px; }
     .login-card {
       position: relative;
       padding: 34px 38px 40px;
@@ -1453,8 +1450,6 @@
     .easy-court .easy-court-top {display:flex;align-items:flex-start;justify-content:space-between;gap:5px;min-width:0;}
     .easy-court .easy-court-top h3 {flex:1;min-width:0;}
     .easy-court .easy-court-top .easy-return-btn {flex:none;min-height:30px;max-width:58%;margin:0;padding:5px 8px;background:#f59e0b;color:#382000;border:1.5px solid #d97706;border-radius:8px;box-shadow:0 2px 6px #d9770630;font-size:clamp(10px,2.5vw,12px);line-height:1.2;font-weight:950;white-space:nowrap;}
-    .easy-court .easy-court-top .easy-live-change-btn {flex:none;min-height:30px;max-width:58%;margin:0;padding:5px 8px;background:linear-gradient(135deg,#f97316,#e11d48);color:#fff;border:1.5px solid #dc4b24;border-radius:8px;box-shadow:0 3px 8px #dc4b2440;font-size:clamp(10px,2.5vw,12px);line-height:1.2;font-weight:950;white-space:nowrap;}
-    .easy-court.is-playing .easy-court-top .easy-live-change-btn {background:linear-gradient(135deg,#f97316,#e11d48);color:#fff;}
     .easy-court .easy-court-top .easy-return-btn:hover {background:#fbbf24;}
     .easy-court .easy-court-top .easy-return-btn:focus-visible {outline:3px solid #1456c8;outline-offset:2px;}
     .player-card.resting,.player-card.resting.male,.player-card.resting.female,.player-card.resting.guest {background:#ffe14b!important;color:#3c2e08!important;border:2px solid #d9a400!important;box-shadow:0 3px 10px #b38f2930;opacity:1;}
@@ -1758,7 +1753,7 @@
         <button id="memberLoginBtn" class="primary-btn">입장하기 →</button>
         <div class="divider">또는</div>
         <button id="guestLoginBtn" class="guest-btn">게스트 입장</button>
-        <button id="representativeLoginBtn" class="representative-login-btn" type="button">👑 주둥아리 대표 계정으로 입장</button>
+        <button id="representativeLoginBtn" class="guest-btn" type="button" style="margin-top:10px;background:linear-gradient(115deg,#b45309,#ea580c);color:#fff;border:none;">👑 주둥아리 대표 계정으로 입장</button>
         <div class="admin-link">
           <button id="loginAdminBtn" class="icon-link" title="운영자 설정">운영자</button>
         </div>
@@ -1779,7 +1774,7 @@
     <main class="content">
       <section id="waitingView" class="view home-view">
         <div class="simple-welcome">
-          <div class="simple-topline"><span>주둥아리 배드민턴</span><button id="helpBtn" class="simple-help" type="button">사용법 ?</button></div>
+          <div class="simple-topline"><span>주둥아리 배드민턴 · 실시간 현황</span><button id="helpBtn" class="simple-help" type="button">사용법 ?</button></div>
           <h1 id="homeGreeting">오늘도 즐거운 경기!</h1>
           <div class="simple-metrics" aria-label="오늘의 경기 현황">
             <div><strong id="metricAttending">0</strong><span>참석</span></div>
@@ -1951,8 +1946,6 @@
   <script>
     const DB_URL = "https://badminton-89c25-default-rtdb.asia-southeast1.firebasedatabase.app";
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
-    // 대표 계정: Firebase Authentication에서 생성한 사용자 UID를 아래에 설정하세요.
-    // badminton-89c25 Authentication에 등록된 대표 이메일 계정의 UID여야 합니다.
     const ADMIN_UID = "4lNFEc07StbUkENLfpUyzrPj03m1";
     const LOCAL_ADMIN_ID = "judoong";
     const LOCAL_ADMIN_PASSWORD = "1111";
@@ -1999,8 +1992,7 @@
       courtAssignments: {},
       currentUser: null,
       authUser: null,
-      isAdmin: false,
-      isRepresentative: false,
+      isAdmin: sessionStorage.getItem("clubAdmin") === "1",
       adminUid: ADMIN_UID,
       memberTab: "member",
       view: "waiting",
@@ -2039,23 +2031,16 @@
       return firebase.auth();
     }
 
-    // 인증 단계에서 영구 대기하지 않도록 보호합니다.
-    function withTimeout(promise, ms, message) {
-      let timer;
-      return Promise.race([
-        Promise.resolve(promise),
-        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })
-      ]).finally(() => clearTimeout(timer));
-    }
-
     async function ensureAuthUser() {
       if (!hasFirebaseConfig() || !window.firebase?.auth) return null;
       const auth = authService();
+      // 저장된 대표 이메일 인증을 먼저 복원한 뒤 익명 로그인 여부를 결정합니다.
+      await auth.authStateReady();
       if (auth.currentUser) {
         state.authUser = auth.currentUser;
         return auth.currentUser;
       }
-      const credential = await withTimeout(auth.signInAnonymously(), 9000, "Firebase 익명 인증 시간이 초과되었습니다. Authentication의 익명 로그인 사용 설정을 확인하세요.");
+      const credential = await auth.signInAnonymously();
       state.authUser = credential.user;
       return credential.user;
     }
@@ -2080,7 +2065,7 @@
     async function db(path, options = {}) {
       const cleanPath = path.replace(/^\/+/, "");
       const params = new URLSearchParams(options.query || {});
-      const token = await withTimeout(authToken(), 10000, "Firebase 인증 응답 지연").catch((error) => {
+      const token = await authToken().catch((error) => {
         console.warn("auth token unavailable", error);
         return "";
       });
@@ -2089,22 +2074,14 @@
       const { query: _query, ...fetchOptions } = options;
       const url = `${DB_URL}/${cleanPath}.json${query}`;
       let res;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
       try {
         res = await fetch(url, {
           ...fetchOptions,
-          signal: controller.signal,
           headers: { "Content-Type": "application/json", ...(fetchOptions.headers || {}) }
         });
       } catch (networkError) {
         console.error("DB fetch network error:", url, networkError);
-        if (networkError.name === "AbortError") {
-          throw new Error("Firebase 데이터 요청 시간이 초과되었습니다. 인터넷 연결 및 Firebase Database 규칙을 확인하세요.");
-        }
-        throw new Error("Firebase 데이터베이스 연결 실패. 네트워크 또는 프로젝트 설정을 확인하세요.");
-      } finally {
-        clearTimeout(timeoutId);
+        throw new Error(`DB 서버에 연결하지 못했습니다 (네트워크 차단/오프라인 가능성). 대상: ${DB_URL}`);
       }
       if (!res.ok) {
         let detail = "";
@@ -2325,87 +2302,47 @@
       return true;
     }
 
-    // v30: 접속 인원과 무관하게 같은 Firebase DB를 사용하는 모든 회원의 화면에 변경사항을 전파합니다.
-    // 읽기 전용 리스너이며 기존 REST 저장/운영진 권한 처리는 유지합니다.
-    let liveSubscriptions = [];
-    let liveRenderTimer = null;
-    let liveSyncActive = false;
-    function queueLiveRender() {
-      clearTimeout(liveRenderTimer);
-      liveRenderTimer = setTimeout(() => {
+    // Firebase 서버의 변경 알림을 받으면 회원 · 배정 · 경기 현황을 함께 그립니다.
+    // 읽기 권한이 부족하면 기존 주기적 조회로 대체합니다.
+    let realtimeRefreshTimer = null;
+    let realtimeUnsubscribers = [];
+    let realtimeReady = false;
+    function scheduleRealtimeRender() {
+      clearTimeout(realtimeRefreshTimer);
+      realtimeRefreshTimer = setTimeout(() => {
         if (document.hidden) return;
         renderAll();
-      }, 110);
+      }, 80);
     }
     function startRealtimeSync() {
-      if (liveSyncActive || !window.firebase?.database) return false;
+      if (!window.firebase?.database || realtimeUnsubscribers.length) return;
       try {
-        const database = firebase.database(firebaseApp());
-        const listen = (ref, eventType, callback) => {
-          ref.on(eventType, callback, error => {
-            console.warn("Firebase 실시간 구독 오류:", error);
-            // 실패한 리스너는 정리한 뒤 폴링 주기에서 재연결합니다.
-            liveSubscriptions.splice(0).forEach(stop => { try { stop(); } catch (_) {} });
-            liveSyncActive = false;
-          });
-          liveSubscriptions.push(() => ref.off(eventType, callback));
+        const liveDb = firebaseApp().database();
+        const register = (path, onData) => {
+          const ref = liveDb.ref(path);
+          const handler = snap => { realtimeReady = true; onData(snap.val()); scheduleRealtimeRender(); };
+          const onError = error => { console.warn(`실시간 수신 제한 (${path}):`, error?.message || error); };
+          ref.on("value", handler, onError);
+          realtimeUnsubscribers.push(() => ref.off("value", handler));
         };
-
-        // 모든 회원에게 대기/휴식/경기 상태를 동일하게 보여줍니다.
-        listen(database.ref("members"), "value", snapshot => {
-          const raw = snapshot.val();
-          if (!raw) return;
-          const incoming = normalizeMembers(raw);
-          // 회원 한 명이 저장 중이어도 나머지 49명에게 발생한 변경은 즉시 표시합니다.
-          for (const id of pendingStatusChanges) {
-            if (state.members[id]) incoming[id] = state.members[id];
-          }
-          state.members = incoming;
-          const ownId = sessionStorage.getItem("clubUserId");
-          if (ownId && state.members[ownId]) {
-            state.currentUser = state.members[ownId];
-            // 기존 회원 관리에서 지정한 운영진 권한을 그대로 적용.
-            state.isAdmin = state.isRepresentative || state.currentUser.admin === true;
-          }
-          queueLiveRender();
+        register("members", raw => {
+          if (raw) state.members = normalizeMembers(raw);
         });
-
-        // 경기 시작 전 배정까지 각 회원의 대기 화면과 코트 현황에 반영.
-        listen(database.ref("courtAssignments"), "value", snapshot => {
-          if (assignmentsDirty) return; // 운영진이 저장하는 도중 로컬 배정 덮어쓰기 방지
-          const remote = snapshot.val() || {};
-          const version = JSON.stringify(remote);
-          if (version === state.assignmentVersion) return;
-          state.courtAssignments = remote;
-          state.assignmentVersion = version;
-          lastQueuedAssignments = version;
-          queueLiveRender();
+        register("courtAssignments", raw => {
+          if (assignmentsDirty) return;
+          state.courtAssignments = raw || {};
+          state.assignmentVersion = assignmentsJson();
         });
-
-        // 게임별 child 이벤트는 기존 게임 기록 전체를 매번 다운로드하지 않습니다.
-        // 최근 48시간 게임을 구독하고, 오래된 진행 중 경기는 보조 새로고침이 처리합니다.
-        const fromKey = `game_${Date.now() - 48 * 60 * 60 * 1000}`;
-        const gamesRef = database.ref("games").orderByKey().startAt(fromKey);
-        const updateGame = snapshot => {
-          const value = snapshot.val();
-          if (!value) return;
-          state.games[snapshot.key] = value;
-          queueLiveRender();
-        };
-        listen(gamesRef, "child_added", updateGame);
-        listen(gamesRef, "child_changed", updateGame);
-        listen(gamesRef, "child_removed", snapshot => {
-          delete state.games[snapshot.key];
-          queueLiveRender();
+        register("games", raw => {
+          if (!raw) { state.games = {}; return; }
+          // 기존 v24와 동일한 표시 기준: 오늘 경기 + 진행 중인 경기를 보여줍니다.
+          const today = new Date().toISOString().slice(0, 10);
+          const activeOrToday = Object.fromEntries(Object.entries(raw).filter(([_, game]) =>
+            game && (game.status === "PLAY" || String(game.startedAt || "").slice(0, 10) === today)));
+          if (state.view !== "stats" || !state.gamesLoadedAll) state.games = activeOrToday;
         });
-        liveSyncActive = true;
-        return true;
       } catch (error) {
-        console.warn("실시간 동기화를 시작하지 못했습니다. 주기적 갱신 사용:", error);
-        liveSubscriptions.forEach(stop => { try { stop(); } catch (_) {} });
-        liveSubscriptions = [];
-        liveSyncActive = false;
-        return false;
+        console.warn("실시간 연결 설정 실패 - 자동 조회를 유지합니다:", error);
       }
     }
 
@@ -2492,25 +2429,15 @@
     }
 
     async function logout() {
-      if (state.isRepresentative) {
-        state.isRepresentative = false;
-        state.isAdmin = false;
-        state.currentUser = null;
-        sessionStorage.removeItem("clubRepresentative");
-        sessionStorage.removeItem("clubAdmin");
-        sessionStorage.removeItem("clubUserId");
-        try { await authService().signOut(); await ensureAuthUser(); } catch(e) { console.warn("대표 로그아웃:", e); }
-        $("appPage").classList.add("hidden");
-        $("loginPage").classList.remove("hidden");
-        toast("대표 계정에서 로그아웃했습니다.");
-        return;
-      }
       const userId = sessionStorage.getItem("clubUserId");
       if (userId && state.members[userId]) {
         await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
       }
       sessionStorage.removeItem("clubUserId");
       sessionStorage.removeItem("clubAdmin");
+      if (authService().currentUser && !authService().currentUser.isAnonymous) {
+        await authService().signOut();
+      }
       state.isAdmin = false;
       state.currentUser = null;
       state.selected.clear();
@@ -2596,7 +2523,7 @@
         const playerDisplay = names.length
           ? `<div class="court-player-grid" aria-label="${court}번 코트 배정 선수">${names.map((name, index) => `<div class="court-player-name"><span class="court-player-number">${index + 1}</span><strong>${escapeHtml(name)}</strong></div>`).join("")}</div>`
           : `<div class="court-player-empty">배정된 선수가 없습니다</div>`;
-        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><div class="easy-court-top"><h3>${court}번 코트</h3>${state.isAdmin && game ? `<button type="button" class="easy-live-change-btn" data-live-change="${court}" aria-label="${court}번 진행 중 경기 코트 변경">⇄ 코트 변경</button>` : state.isAdmin && !game && ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}" aria-label="${court}번 코트 선수 대기로 가기">↩ 대기로 가기</button>` : ""}</div><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
+        return `<div class="easy-court ${game ? "is-playing" : ready ? "is-ready" : ""}"><div class="easy-court-top"><h3>${court}번 코트</h3>${state.isAdmin && !game && ids.length ? `<button type="button" class="easy-return-btn" data-court-return="${court}" aria-label="${court}번 코트 선수 대기로 가기">↩ 대기로 가기</button>` : ""}</div><span class="court-status">${status}</span>${playerDisplay}${button}</div>`;
       }).join("");
       const root = $("easyCourts");
       root.innerHTML = html;
@@ -2604,7 +2531,6 @@
       root.querySelectorAll('[data-easy-start]').forEach(btn=>btn.addEventListener('click',()=>startAssignedGame(Number(btn.dataset.easyStart))));
       root.querySelectorAll('[data-easy-end]').forEach(btn=>btn.addEventListener('click',()=>finishGame(btn.dataset.easyEnd)));
       root.querySelectorAll('[data-court-return]').forEach(btn=>btn.addEventListener('click',()=>returnCourtToWaiting(Number(btn.dataset.courtReturn))));
-      root.querySelectorAll('[data-live-change]').forEach(btn=>btn.addEventListener('click',()=>openSwapCourts(Number(btn.dataset.liveChange))));
       $("courtManageTools")?.classList.toggle("hidden", !state.isAdmin);
       renderEasyWaitingGroups();
     }
@@ -2747,86 +2673,27 @@
       toast(`${ids.size}명이 대기 화면으로 복귀했습니다.`);
     }
 
-    function openSwapCourts(preferredCourt = null) {
+    function openSwapCourts() {
       if (!state.isAdmin) return noAdminAccess();
-      const currentGames = new Map(activeGames().map(game => [Number(game.court), game]));
-      const occupiedCourts = ALL_COURTS.filter(c => (state.courtAssignments[c] || []).length || currentGames.has(c));
-      if (!occupiedCourts.length) return toast("변경할 코트 배정이나 진행 중 경기가 없습니다.");
-      const selectedCourt = occupiedCourts.includes(Number(preferredCourt)) ? Number(preferredCourt) : occupiedCourts[0];
-      showModal("코트 변경", `<p class="court-edit-help">경기 시작 전 배정뿐 아니라 <strong>진행 중인 경기</strong>도 코트를 변경할 수 있습니다.<br>두 코트 모두 경기 중이면 경기의 코트 위치만 교환하며, 선수·경기 시작시간·경기 횟수는 유지됩니다.</p>
-        <div class="field full"><label for="swapFrom">현재 코트</label><select id="swapFrom">${occupiedCourts.map(c => `<option value="${c}" ${c === selectedCourt ? "selected" : ""}>${c}번 코트 ${currentGames.has(c) ? "(경기 중)" : "(시작 전 배정)"}</option>`).join("")}</select></div>
-        <div class="field full"><label for="swapTo">변경할 코트</label><select id="swapTo">${ALL_COURTS.map(c => `<option value="${c}">${c}번 코트${currentGames.has(c) ? " (경기 중)" : (state.courtAssignments[c] || []).length ? " (시작 전 배정)" : " (비어 있음)"}</option>`).join("")}</select></div>`, [
-        ["취소", closeModal], ["코트 변경", async () => {
+      const courts = ALL_COURTS.filter(c => (state.courtAssignments[c] || []).length && !activeGames().some(g => Number(g.court) === c));
+      if (!courts.length) return toast("변경할 경기 전 배정 코트가 없습니다.");
+      showModal("코트 변경", `<p class="court-edit-help">선수 배정 전체를 다른 코트로 옮기거나 두 코트의 배정을 서로 교환합니다. 진행 중인 경기는 변경할 수 없습니다.</p>
+        <div class="field full"><label for="swapFrom">현재 코트</label><select id="swapFrom">${courts.map(c => `<option value="${c}">${c}번 코트</option>`).join("")}</select></div>
+        <div class="field full"><label for="swapTo">변경할 코트</label><select id="swapTo">${ALL_COURTS.map(c => `<option value="${c}">${c}번 코트</option>`).join("")}</select></div>`, [
+        ["취소", closeModal], ["코트 변경", () => {
           const from = Number($("swapFrom").value), to = Number($("swapTo").value);
           if (from === to) return toast("다른 코트를 선택하세요.");
-          const sourceGame = activeGames().find(g => Number(g.court) === from);
-          const targetGame = activeGames().find(g => Number(g.court) === to);
-          const sourceIds = [...(state.courtAssignments[from] || [])];
-          const targetIds = [...(state.courtAssignments[to] || [])];
-          if (!sourceGame && !sourceIds.length) return toast("이동할 선수나 경기가 없습니다.");
-          if ((sourceGame && targetIds.length) || (!sourceGame && targetGame)) {
-            return toast("진행 중인 경기와 시작 전 배정은 서로 교환할 수 없습니다. 다른 코트를 선택하세요.");
-          }
-          // 경기 시작 후에는 대기코트로 옮기지 않도록 제한합니다.
-          if ((sourceGame || targetGame) && (!isGameCourt(from) || !isGameCourt(to))) {
-            return toast("진행 중인 경기는 1~5번 경기 코트끼리만 변경할 수 있습니다.");
-          }
-          const detail = sourceGame && targetGame ? `${from}번과 ${to}번의 진행 중 경기를 서로 교환` :
-            sourceGame ? `${from}번에서 진행 중인 경기를 ${to}번 코트로 이동` :
-            targetIds.length ? `${from}번과 ${to}번의 경기 전 배정을 교환` : `${from}번 배정을 ${to}번으로 이동`;
-          if (!confirm(`${detail}할까요?\n선수와 경기 기록은 변경되지 않습니다.`)) return;
-          if (sourceGame) {
-            try {
-              // 실제 DB의 최신 상태를 다시 확인하여 이미 완료되거나 다른 코트로 이동한 경기를 덮어쓰지 않습니다.
-              const [liveSource, liveTarget, liveAssignments] = await Promise.all([
-                dbGet(`games/${sourceGame.id}`),
-                targetGame ? dbGet(`games/${targetGame.id}`) : Promise.resolve(null),
-                dbGet("courtAssignments")
-              ]);
-              if (!liveSource || liveSource.status !== "PLAY" || Number(liveSource.court) !== from ||
-                  (targetGame && (!liveTarget || liveTarget.status !== "PLAY" || Number(liveTarget.court) !== to))) {
-                await loadData();
-                return toast("다른 기기에서 경기 상태가 변경됐습니다. 다시 확인하세요.");
-              }
-              if ((liveAssignments?.[to] || []).length) {
-                await loadData();
-                return toast("이동할 코트에 경기 전 배정이 있습니다. 다른 코트를 선택하세요.");
-              }
-              const updates = { [`games/${sourceGame.id}/court`]: to };
-              // 현재 진행 중인 경기의 선수 4명과 시작 시간은 그대로 두고 코트만 이동합니다.
-              if (targetGame) updates[`games/${targetGame.id}/court`] = from;
-              else {
-                // 대상 코트에 다른 진행 중 경기가 없는지도 확인합니다.
-                const latest = await dbGet("games");
-                if (Object.values(latest || {}).some(g => g?.status === "PLAY" && Number(g.court) === to && g.id !== sourceGame.id)) {
-                  await loadData();
-                  return toast("대상 코트에서 다른 경기가 시작됐습니다. 다시 확인하세요.");
-                }
-              }
-              await dbPatch("/", updates);
-              // 저장이 성공해야 로컬 화면을 갱신합니다.
-              state.games[sourceGame.id] = { ...state.games[sourceGame.id], court: to };
-              if (targetGame) state.games[targetGame.id] = { ...state.games[targetGame.id], court: from };
-              closeModal();
-              renderAll();
-              toast(targetGame ? `${from}번과 ${to}번 진행 중 경기 코트를 교환했습니다.` : `진행 중 경기를 ${from}번에서 ${to}번 코트로 변경했습니다.`);
-            } catch (error) {
-              console.error("진행 중 코트 변경 저장 실패", error);
-              toast("코트 변경 저장에 실패했습니다. 잠시 후 다시 시도하세요.");
-            }
-          } else {
-            if (targetIds.length) state.courtAssignments[from] = targetIds;
-            else delete state.courtAssignments[from];
-            state.courtAssignments[to] = sourceIds;
-            scheduleAssignmentSave();
-            closeModal(); renderAll();
-            toast(targetIds.length ? `${from}번과 ${to}번 코트 배정을 교환했습니다.` : `${from}번 배정을 ${to}번으로 옮겼습니다.`);
-          }
+          if (activeGames().some(g => Number(g.court) === to)) return toast("진행 중인 코트로는 옮길 수 없습니다.");
+          const fromIds = [...(state.courtAssignments[from] || [])];
+          const toIds = [...(state.courtAssignments[to] || [])];
+          if (!fromIds.length) return toast("이동할 선수가 없습니다.");
+          if (toIds.length) state.courtAssignments[from] = toIds;
+          else delete state.courtAssignments[from];
+          state.courtAssignments[to] = fromIds;
+          scheduleAssignmentSave();
+          closeModal(); renderAll();
+          toast(toIds.length ? `${from}번과 ${to}번 코트 배정을 교환했습니다.` : `${from}번 배정을 ${to}번으로 옮겼습니다.`);
         }, "confirm"]]);
-      const destination = $("swapTo");
-      const suggested = GAME_COURTS.find(c => c !== selectedCourt && !currentGames.has(c) && !(state.courtAssignments[c] || []).length)
-        || ALL_COURTS.find(c => c !== selectedCourt && !currentGames.has(c) && !(state.courtAssignments[c] || []).length);
-      if (suggested) destination.value = String(suggested);
     }
 
     function noAdminAccess() {
@@ -3560,21 +3427,7 @@
         ["닫기", closeModal]
       ]);
     }
-    function renderRepresentativeBanner() {
-      const view = $("waitingView");
-      if (!view) return;
-      let banner = $("representativeBanner");
-      if (!state.isRepresentative) { banner?.remove(); return; }
-      if (!banner) {
-        banner = document.createElement("div");
-        banner.id = "representativeBanner";
-        banner.className = "representative-banner";
-        banner.innerHTML = '<span>👑 주둥아리 대표 · 게임 운영 중</span><small>회원 화면과 실시간 공유</small>';
-        view.prepend(banner);
-      }
-    }
     function renderAll() {
-      renderRepresentativeBanner();
       if (state.view === "waiting") renderWaiting();
       else if (state.view === "playing") renderPlaying();
       else if (state.view === "gradeMatch") renderGradeMatch();
@@ -3585,66 +3438,16 @@
       $("registeredCount").textContent = `회원 ${list.filter((m) => !m.isGuest).length}명 · 게스트 ${list.filter((m) => m.isGuest).length}명`;
     }
 
-    // 대표 계정은 Firebase Authentication의 이메일/비밀번호 로그인으로 검증합니다.
-    // 브라우저 HTML에 대표 비밀번호를 저장하지 않습니다.
     function openRepresentativeLogin() {
-      showModal("주둥아리 대표 로그인", `
-        <p style="line-height:1.6;margin-top:0">대표 계정에서 퀵배정·경기 시작·진행 중 코트 변경을 운영하면 접속한 회원 모두가 Firebase를 통해 동일한 경기·대기 현황을 확인할 수 있습니다.</p>
-        <div class="field full"><label for="repEmail">대표 계정 이메일</label><input id="repEmail" type="email" autocomplete="username" placeholder="Firebase에 등록된 대표 이메일"></div>
-        <div class="field full"><label for="repPassword">비밀번호</label><input id="repPassword" type="password" autocomplete="current-password" placeholder="대표 계정 비밀번호"></div>
-        <p style="font-size:12px;color:#63717c;line-height:1.5">대표 계정은 Firebase Authentication에 생성하고, 아래 설정의 대표 UID와 연결해야 합니다.</p>
-        <div id="repLoginError" role="alert" aria-live="polite" style="display:none;margin-top:12px;border:1px solid #efb2b2;background:#fff2f2;color:#8b1d1d;border-radius:8px;padding:12px;line-height:1.6;font-size:13px;white-space:pre-line"></div>
-      `, [["취소", closeModal], ["대표 계정 입장", async () => {
-        const email = $("repEmail").value.trim();
-        const password = $("repPassword").value;
-        const errorBox = $("repLoginError");
-        function showRepError(message) {
-          if (errorBox) { errorBox.textContent = message; errorBox.style.display = "block"; }
-          else toast(message);
-        }
-        if (!email || !password) return showRepError("이메일과 비밀번호를 모두 입력하세요.");
-        if (errorBox) errorBox.style.display = "none";
-        try {
-          const credentials = await withTimeout(authService().signInWithEmailAndPassword(email, password), 15000, "Firebase 서버 인증 응답 시간이 초과되었습니다.");
-          const user = credentials.user;
-          // 대표 권한은 고정 UID로 검사합니다. DB 사용자명만으로 인증하지 않습니다.
-          if (user.uid !== ADMIN_UID) {
-            await authService().signOut();
-            await ensureAuthUser().catch(() => {});
-            return showRepError("이메일 로그인은 성공했지만 대표 계정 UID가 다릅니다.\nFirebase의 사용자 UID와 HTML ADMIN_UID를 다시 확인하세요.");
-          }
-          state.authUser = user;
-          state.isRepresentative = true;
-          state.isAdmin = true;
-          state.currentUser = null;
-          sessionStorage.removeItem("clubUserId");
-          sessionStorage.setItem("clubRepresentative", "1");
-          sessionStorage.setItem("clubAdmin", "1");
-          closeModal();
-          showApp();
-          renderAll();
-          toast("주둥아리 대표 계정으로 입장했습니다.");
-        } catch (error) {
-          console.error("대표 계정 인증 실패", error);
-          const code = error?.code || "unknown";
-          const explanations = {
-            "auth/invalid-credential": "이메일 또는 비밀번호가 일치하지 않습니다.",
-            "auth/wrong-password": "비밀번호가 일치하지 않습니다.",
-            "auth/user-not-found": "Firebase에 등록되지 않은 이메일입니다.",
-            "auth/invalid-email": "이메일 형식이 올바르지 않습니다.",
-            "auth/operation-not-allowed": "Firebase Authentication에서 이메일/비밀번호 로그인 기능이 꺼져 있습니다.",
-            "auth/unauthorized-domain": "Firebase Authentication의 승인된 도메인에 현재 사이트 주소가 등록되지 않았습니다.",
-            "auth/network-request-failed": "네트워크 연결 또는 Firebase 접속을 확인하세요.",
-            "auth/too-many-requests": "로그인 시도가 많아 일시적으로 제한되었습니다. 잠시 후 다시 시도하세요.",
-            "auth/user-disabled": "Firebase에서 사용 중지된 계정입니다."
-          };
-          showRepError("대표 로그인 실패 (" + code + ")\n" + (explanations[code] || error?.message || "Firebase 설정 또는 브라우저 콘솔을 확인하세요."));
-        }
-      }, "confirm"]]);
+      openAdminModal();
+      const email = $("adminEmail");
+      if (email) email.value = "judoongari@gmail.com";
+      const password = $("adminAuthPass");
+      if (password) password.focus();
     }
 
     function openAdminModal(targetView = "") {
-      showModal("운영자 로그인", `
+      showModal("운영자 / 주둥아리 대표 로그인", `
         <div class="field full">
           <label for="adminEmail">Firebase Auth 이메일 또는 운영자 ID</label>
           <input id="adminEmail" type="text" placeholder="운영자 이메일 / ID (비워도 됨)">
@@ -4382,112 +4185,37 @@
       toast("카톡 오픈채팅방을 열었습니다.");
     }
 
-    // v32: 경기 시작 전 배정은 아직 서버에 없을 수 있습니다(null = 정상적인 빈 데이터).
-    // 코트 배정 확인 오류와 실제 Firebase 권한/네트워크 오류를 구분합니다.
-    const startingCourts = new Set();
-    function describeGameWriteError(error) {
-      const message = String(error?.message || error || "알 수 없는 오류");
-      if (/permission_denied|permission denied|permission denied|401|403|Permission denied/i.test(message)) {
-        return "Firebase 데이터 접근 권한이 없습니다. badminton 프로젝트의 Realtime Database 보안 규칙과 대표 계정 권한을 확인하세요.";
-      }
-      if (/시간이 초과|AbortError|network|Failed to fetch|연결 실패/i.test(message)) {
-        return "Firebase 연결 시간이 초과됐습니다. 인터넷 연결을 확인하고 다시 시도하세요.";
-      }
-      return `Firebase 저장 오류: ${message.slice(0, 150)}`;
-    }
-
-    // 경기 시작에 실패하면 사라지는 토스트 대신 오류 원인을 남겨줍니다.
-    function showGameStartFailure(step, error, court, players) {
-      console.error(`[경기 시작 오류] ${step} · ${court}번 코트`, error);
-      const message = describeGameWriteError(error);
-      const detail = String(error?.message || error || "원인 정보 없음").slice(0, 450);
-      showModal("경기 시작 오류 확인", `
-        <p style="line-height:1.6"><strong>${court}번 코트에 ${players.length}명 배정된 상태</strong>에서 서버 처리에 실패했습니다.</p>
-        <p><strong>실패 단계:</strong> ${escapeHtml(step)}</p>
-        <p style="line-height:1.6;color:#9b2730;font-weight:800">${escapeHtml(message)}</p>
-        <details style="margin:12px 0"><summary>기술적 오류 내용 보기</summary><pre style="white-space:pre-wrap;word-break:break-all;background:#f5f5f5;padding:10px;border-radius:8px">${escapeHtml(detail)}</pre></details>
-        <p class="court-edit-help">기존 배정 인원은 유지합니다. Firebase Realtime Database 규칙이나 연결 프로젝트를 확인해야 할 수 있습니다.</p>
-      `, [["확인", closeModal]]);
-    }
-
     async function startGame(court, assignedPlayers = null) {
       if (!state.isAdmin) return noAdminAccess();
-      court = Number(court);
-      const players = [...(assignedPlayers || Array.from(state.selected))];
-      if (players.length !== 4 || new Set(players).size !== 4) return toast("서로 다른 선수 4명을 배정해 주세요.");
-      if (players.some(id => !state.members[id] || state.members[id].status !== "WAIT")) {
-        return toast("선수 상태가 변경됐습니다. 대기 중인 선수 4명을 다시 확인하세요.");
-      }
+      const players = assignedPlayers || Array.from(state.selected);
+      if (players.length !== 4) return toast("Assign 4 players.");
       if (!isGameCourt(court)) return toast("게임 시작은 1~5번 게임코트에서만 가능합니다.");
-      if (startingCourts.has(court)) return toast(`${court}번 코트의 경기 시작을 처리 중입니다.`);
-      if (activeGames().some(g => Number(g.court) === court)) return toast(`${court}번 코트는 이미 경기 중입니다.`);
-      startingCourts.add(court);
+      if (activeGames().some((g) => Number(g.court) === court)) return toast(`${court} court is already playing.`);
+      const id = `game_${Date.now()}`;
+      const startedAt = now();
+      const updates = {
+        [`games/${id}`]: { id, court, players, status: "PLAY", startedAt }
+      };
+      players.forEach((id) => {
+        const m = state.members[id];
+        updates[`members/${id}/status`] = "PLAY";
+        updates[`members/${id}/games`] = Number(m?.games || 0) + 1;
+        updates[`members/${id}/updatedAt`] = startedAt;
+      });
       try {
-        // 기존 배정 자동 저장 타이머가 시작 직후 삭제된 코트를 다시 덮어쓰지 못하도록 중단합니다.
-        clearTimeout(assignmentsSaveTimer);
-        await assignmentSaveChain.catch(error => console.warn("앞선 코트 배정 저장 실패", error));
-        clearTimeout(assignmentsSaveTimer);
-
-        // REST API는 데이터가 없는 경로를 null로 반환합니다. 오류와 혼동하지 않습니다.
-        // 게임 시작은 아래 단일 다중 경로 PATCH에서 서버에 원자적으로 반영합니다.
-        let serverAssignments, remoteGames;
-        try {
-          [serverAssignments, remoteGames] = await Promise.all([
-            dbGet("courtAssignments"),
-            dbGet("games")
-          ]);
-        } catch (error) {
-          console.error("경기 시작 전 Firebase 조회 실패", error);
-          return showGameStartFailure("Firebase 배정·경기 조회", error, court, players);
-        }
-        const remoteIds = serverAssignments?.[court] || [];
-        if (remoteIds.length && JSON.stringify(remoteIds) !== JSON.stringify(players)) {
-          await loadData({ gamesMode: "today" });
-          showModal("코트 배정 충돌", `<p>화면에는 ${court}번 코트에 ${players.length}명이 배정되어 있지만 Firebase에 저장된 명단은 다릅니다.</p><p class="court-edit-help">다른 운영진이 변경했거나 이전 배정 저장이 아직 끝나지 않았을 수 있습니다. 최신 상태를 확인한 뒤 다시 배정해 주세요.</p>`, [["확인", closeModal]]);
-          return;
-        }
-        if (Object.values(remoteGames || {}).some(g => g?.status === "PLAY" && Number(g.court) === court)) {
-          await loadData({ gamesMode: "today" });
-          return toast("이 코트에서 이미 경기가 진행 중입니다.");
-        }
-        const id = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-        const startedAt = now();
-        const updates = {
-          [`games/${id}`]: { id, court, players, status: "PLAY", startedAt },
-          [`courtAssignments/${court}`]: null
-        };
-        players.forEach(playerId => {
-          const member = state.members[playerId];
-          updates[`members/${playerId}/status`] = "PLAY";
-          updates[`members/${playerId}/games`] = Number(member?.games || 0) + 1;
-          updates[`members/${playerId}/updatedAt`] = startedAt;
-        });
-        try {
-          await dbPatch("/", updates);
-        } catch (error) {
-          console.error("게임 시작 Firebase 쓰기 실패", error);
-          return showGameStartFailure("Firebase 경기 시작 저장", error, court, players);
-        }
-        // 저장 성공 이후에만 로컬 상태 변경. 실시간 구독은 나머지 모든 접속자에게 알립니다.
-        delete state.courtAssignments[court];
-        state.assignmentVersion = assignmentsJson();
-        lastQueuedAssignments = state.assignmentVersion;
-        assignmentsDirty = false;
-        state.games = { ...state.games, [id]: updates[`games/${id}`] };
-        players.forEach(playerId => {
-          if (state.members[playerId]) {
-            state.members[playerId].status = "PLAY";
-            state.members[playerId].games = Number(state.members[playerId].games || 0) + 1;
-            state.members[playerId].updatedAt = startedAt;
-          }
-        });
-        state.selected.clear();
-        closeModal();
-        setView("waiting");
-        toast(`${court}번 코트에서 게임을 시작했습니다.`);
-      } finally {
-        startingCourts.delete(court);
+        await dbPatch("/", updates);
+      } catch (error) {
+        console.error(error);
+        toast("게임 시작 저장에 실패했습니다. 코트 배정은 유지됩니다.");
+        return;
       }
+      delete state.courtAssignments[court];
+      scheduleAssignmentSave();
+      state.selected.clear();
+      closeModal();
+      await loadData();
+      setView("waiting");
+      toast("게임을 시작했습니다.");
     }
     const finishingGames = new Set();
     async function finishGame(gameId) {
@@ -4495,52 +4223,39 @@
       const game = state.games[gameId];
       if (!game || game.status !== "PLAY" || finishingGames.has(gameId)) return;
       finishingGames.add(gameId);
+      const endedAt = now();
+      const updates = {};
+      const oldStatuses = {};
+      const previousAssignments = Object.fromEntries(
+        Object.entries(state.courtAssignments).map(([court, ids]) => [court, [...ids]]));
+      game.players.forEach((id) => {
+        oldStatuses[id] = state.members[id]?.status;
+        updates[`members/${id}/status`] = "WAIT";
+        updates[`members/${id}/updatedAt`] = endedAt;
+        if (state.members[id]) state.members[id].status = "WAIT";
+      });
+      updates[`games/${gameId}/status`] = "DONE";
+      updates[`games/${gameId}/endedAt`] = endedAt;
+
+      // Firebase 재조회가 끝나기 전에 로컬 화면을 즉시 갱신합니다.
+      // 오늘 경기 횟수 캐시도 새 객체 참조로 무효화합니다.
+      state.games = { ...state.games, [gameId]: { ...game, status: "DONE", endedAt } };
+      const promotedFrom = promoteNextWaitingCourt(Number(game.court));
+      if (promotedFrom) scheduleAssignmentSave();
+      renderAll();
+      toast(promotedFrom ? `${promotedFrom}번 대기팀이 ${game.court}번 코트로 이동했습니다.` : "게임이 종료되었습니다.");
       try {
-        // 대기팀 승격과 경기 종료를 하나의 Firebase PATCH로 전송합니다.
-        // 실패한 저장이 먼저 화면에 성공으로 보이지 않도록 서버 응답 이후에 갱신합니다.
-        clearTimeout(assignmentsSaveTimer);
-        await assignmentSaveChain.catch(() => {});
-        const oldAssignments = JSON.parse(JSON.stringify(state.courtAssignments || {}));
-        const endedAt = now();
-        const updates = {
-          [`games/${gameId}/status`]: "DONE",
-          [`games/${gameId}/endedAt`]: endedAt
-        };
-        (game.players || []).forEach(playerId => {
-          updates[`members/${playerId}/status`] = "WAIT";
-          updates[`members/${playerId}/updatedAt`] = endedAt;
+        await dbPatch("/", updates);
+        // 전체 회원/게임 데이터 재조회는 생략하여 네트워크 지연을 제거합니다.
+      } catch (error) {
+        console.error("game finish save failed", error);
+        state.games = { ...state.games, [gameId]: game };
+        game.players.forEach((id) => {
+          if (state.members[id]) state.members[id].status = oldStatuses[id];
         });
-        const promotedFrom = promoteNextWaitingCourt(Number(game.court));
-        if (promotedFrom) {
-          for (const c of new Set([...Object.keys(oldAssignments), ...Object.keys(state.courtAssignments)])) {
-            const before = JSON.stringify(oldAssignments[c] || []);
-            const after = JSON.stringify(state.courtAssignments[c] || []);
-            if (before !== after) updates[`courtAssignments/${c}`] = state.courtAssignments[c] || null;
-          }
-        }
-        try {
-          await dbPatch("/", updates);
-        } catch (error) {
-          state.courtAssignments = oldAssignments;
-          state.assignmentVersion = JSON.stringify(oldAssignments);
-          lastQueuedAssignments = state.assignmentVersion;
-          assignmentsDirty = false;
-          console.error("경기 종료 Firebase 쓰기 실패", error);
-          renderAll();
-          return toast(describeGameWriteError(error));
-        }
-        state.games = { ...state.games, [gameId]: { ...game, status: "DONE", endedAt } };
-        (game.players || []).forEach(playerId => {
-          if (state.members[playerId]) {
-            state.members[playerId].status = "WAIT";
-            state.members[playerId].updatedAt = endedAt;
-          }
-        });
-        state.assignmentVersion = assignmentsJson();
-        lastQueuedAssignments = state.assignmentVersion;
-        assignmentsDirty = false;
+        state.courtAssignments = previousAssignments;
         renderAll();
-        toast(promotedFrom ? `경기를 종료하고 ${promotedFrom}번 대기팀을 ${game.court}번 코트로 이동했습니다.` : "게임을 종료했습니다.");
+        toast("게임 종료 저장에 실패했습니다. 이전 상태로 되돌렸습니다.");
       } finally {
         finishingGames.delete(gameId);
       }
@@ -4804,70 +4519,43 @@
 
     async function init() {
       bindEvents();
-      const loginCountEl = $("registeredCount");
-      const initialStatusTimer = setTimeout(() => {
-        if (loginCountEl && loginCountEl.textContent.includes("등록 회원 확인 중")) {
-          loginCountEl.textContent = "서버 연결이 지연되고 있습니다. 잠시 후 연결 오류 또는 회원 수가 표시됩니다.";
-        }
-      }, 6000);
       const today = new Date();
       $("statEndDate").value = today.toISOString().slice(0, 10);
       $("statStartDate").value = today.toISOString().slice(0, 8) + "01";
-      // 로그인 버튼은 DB 문제와 무관하게 사용할 수 있도록 유지합니다.
-      // 회원 수는 초기 조회에 실패하면 오류와 재시도 버튼을 표시합니다.
       await loadData({ gamesMode: "today" }).catch(showDbError);
-      clearTimeout(initialStatusTimer);
       cleanupStaleGames()
         .then(() => loadData({ gamesMode: "today" }))
         .catch((error) => console.warn("stale game cleanup failed", error));
-      const savedId = sessionStorage.getItem("clubUserId");
-      // Firebase는 로그인 정보를 브라우저에 보존하므로 새로고침 시 대표 세션을 다시 확인합니다.
-      let restoredAuth = null;
-      try {
-        restoredAuth = await withTimeout(new Promise(resolve => {
-          let unsub = () => {};
-          unsub = authService().onAuthStateChanged(user => {
-            unsub(); resolve(user);
-          }, () => resolve(null));
-        }), 7000, "대표 로그인 세션 확인 지연");
-      } catch(e) { console.warn("대표 세션 복구 실패",e); }
-      if (sessionStorage.getItem("clubRepresentative") === "1" && restoredAuth &&
-          !restoredAuth.isAnonymous && restoredAuth.uid === ADMIN_UID) {
-        state.authUser = restoredAuth;
-        state.isRepresentative = true;
+      await authService().authStateReady();
+      const signedInUser = authService().currentUser;
+      if (signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID) {
+        state.authUser = signedInUser;
         state.isAdmin = true;
-        state.currentUser = null;
-        sessionStorage.removeItem("clubUserId");
+        sessionStorage.setItem("clubAdmin", "1");
         showApp();
-        renderAll();
-      } else if (savedId && state.members[savedId]) {
+      }
+      const savedId = sessionStorage.getItem("clubUserId");
+      if (savedId && state.members[savedId]) {
         state.currentUser = state.members[savedId];
         // Refresh permission from current member record instead of a stale session flag.
-        state.isAdmin = state.currentUser.admin === true;
+        state.isAdmin = Boolean(signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID) || state.currentUser.admin === true;
         if (state.isAdmin) sessionStorage.setItem("clubAdmin", "1");
         else sessionStorage.removeItem("clubAdmin");
         showApp();
-      } else {
+      } else if (!(signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID)) {
         state.isAdmin = false;
         sessionStorage.removeItem("clubAdmin");
-        sessionStorage.removeItem("clubRepresentative");
       }
-      // 실시간 리스너가 우선이고, 20초 폴링은 네트워크 끊김/오래된 경기 보완용입니다.
-      await ensureAuthUser().catch(error => console.warn("Firebase 인증 확인:", error));
       startRealtimeSync();
       let syncBusy = false;
       state.unsubscribeTimer = setInterval(async () => {
         if (document.hidden || syncBusy || pendingStatusChanges.size || assignmentsDirty) return;
-        if (!liveSyncActive) startRealtimeSync();
         syncBusy = true;
         try { await loadData({ gamesMode: state.view === "stats" ? "none" : "today" }); }
         finally { syncBusy = false; }
-      }, 20000);
+      }, 15000);
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden && !syncBusy && !assignmentsDirty) {
-          refreshSilent();
-          if (!liveSyncActive) startRealtimeSync();
-        }
+        if (!document.hidden && !syncBusy && !assignmentsDirty) refreshSilent();
       });
     }
 
