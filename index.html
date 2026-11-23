@@ -2549,7 +2549,7 @@
     function renderBeginnerHome() {
       if (!$('easyCourts')) return;
       const members = Object.values(state.members || {});
-      const attending = members.filter(m => ["WAIT","PLAY","EXCLUDED"].includes(m.status)).length;
+      const attending = members.filter(m => ["WAIT","PLAY","REST","EXCLUDED"].includes(m.status)).length;
       const playing = members.filter(m => m.status === "PLAY").length;
       const assigned = assignedPlayerIds();
       const waiting = members.filter(m => m.status === "WAIT" && !assigned.has(m.id)).length;
@@ -2583,7 +2583,7 @@
       const gamesByCourt = new Map(activeGames().map(g=>[Number(g.court),g]));
       const html = GAME_COURTS.map(court=>{
         const game = gamesByCourt.get(court);
-        const ids = state.courtAssignments?.[court] || [];
+        const ids = (state.courtAssignments?.[court] || []).filter(id => state.members[id]?.status !== "REST");
         const ready = !game && ids.length === 4;
         const names = (game ? game.players : ids).map(id => state.members[id]?.name).filter(Boolean);
         const status = game ? "경기 중" : ready ? "시작 준비 완료" : ids.length ? `${ids.length}/4명 배정` : "비어 있음";
@@ -2880,7 +2880,7 @@
       ALL_COURTS.forEach((court) => {
         const courtType = isGameCourt(court) ? "game-court" : "wait-court";
         const active = isGameCourt(court) ? activeGames().find((g) => Number(g.court) === court) : null;
-        const assigned = state.courtAssignments?.[court] || [];
+        const assigned = (state.courtAssignments?.[court] || []).filter(id => state.members[id]?.status !== "REST");
         const label = document.createElement("div");
         label.className = `court-cell court-label-cell ${courtType}`;
         if (active) {
@@ -2921,7 +2921,7 @@
       });
 
       const waiting = memberList()
-        .filter((m) => (m.status === "WAIT" || m.status === "EXCLUDED" || m.status === "REST") && !assignedIds.has(m.id))
+        .filter((m) => m.status === "REST" || ((m.status === "WAIT" || m.status === "EXCLUDED") && !assignedIds.has(m.id)))
         .sort((a, b) => {
           const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
           const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
@@ -4267,6 +4267,7 @@
       if (!state.isAdmin) return noAdminAccess();
       const players = assignedPlayers ? [...assignedPlayers] : Array.from(state.selected);
       if (players.length !== 4 || new Set(players).size !== 4) return toast("선수 4명을 중복 없이 배정해주세요.");
+      if (players.some(id => state.members[id]?.status === "REST")) return toast("휴식 중인 선수가 있습니다. 선수 수정 후 경기 시작해주세요.");
       if (!isGameCourt(court)) return toast("경기 시작은 1~5번 코트에서만 가능합니다.");
       if (activeGames().some(g => Number(g.court) === Number(court))) return toast(`${court}번 코트는 이미 경기 중입니다.`);
       if (!(state.courtAssignments[court] || []).length) return toast("코트 배정을 먼저 저장해주세요.");
@@ -4351,13 +4352,27 @@
 
     async function restCurrentUser() {
       const userId = sessionStorage.getItem("clubUserId");
-      if (!userId || !state.members[userId]) return toast("입장 정보가 없습니다.");
-      await dbPatch(`members/${userId}`, { status: "REST", updatedAt: now() });
-      if (state.members[userId]) state.members[userId].status = "REST";
-      Object.keys(state.courtAssignments).forEach(c => { state.courtAssignments[c] = state.courtAssignments[c].filter(id => id !== userId); if (!state.courtAssignments[c].length) delete state.courtAssignments[c]; });
-      scheduleAssignmentSave();
-      renderAll();
-      toast("대기 화면에 노란색 휴식 표시로 남습니다. 대기 복귀를 누르면 경기 배정에 참여할 수 있어요.");
+      const member = userId ? state.members[userId] : null;
+      if (!member) return toast("입장 정보가 없습니다.");
+      if (member.status === "PLAY") return toast("경기 중에는 잠시 쉬기를 선택할 수 없습니다. 경기 종료 후 이용하세요.");
+      if (member.status === "REST") return toast("이미 잠시 쉬는 중입니다.");
+      const previousStatus = member.status;
+      const timestamp = now();
+      try {
+        // 회원 본인의 상태만 수정합니다. 일반회원은 코트 배정 전체를 수정할 권한이 없습니다.
+        await dbPatch(`members/${userId}`, { status: "REST", updatedAt: timestamp });
+        member.status = "REST";
+        member.updatedAt = timestamp;
+        state.selected.delete(userId);
+        // REST 회원은 배정 정보가 남아 있어도 대기 명단에 표시하며 경기 배정 대상에서는 제외합니다.
+        renderAll();
+        toast("잠시 쉬는 중입니다. 참석 인원은 유지되고, 대기 화면에서 노란색으로 표시됩니다.");
+      } catch (error) {
+        member.status = previousStatus;
+        console.error("휴식 상태 저장 실패", error);
+        renderAll();
+        toast("잠시 쉬기 저장에 실패했습니다. 연결을 확인하세요.");
+      }
     }
 
     async function returnCurrentUser() {
