@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>주둥아리 배드민턴</title>
+  <title>주둥아리 배드민턴 · v24 안정화</title>
   <style>
     :root {
       --bg: #071827;
@@ -2097,6 +2097,36 @@
     const dbPut = (path, data) => db(path, { method: "PUT", body: JSON.stringify(data) });
     const dbPatch = (path, data) => db(path, { method: "PATCH", body: JSON.stringify(data) });
     const dbDelete = (path) => db(path, { method: "DELETE" });
+
+
+    // 대표/운영진의 다중 경로 변경은 Firebase SDK에서 원자적으로 처리합니다.
+    // 중요: 상위 .write=false여도 각 하위 경로 규칙이 허용하면 update가 가능합니다.
+    async function saveGameUpdates(updates) {
+      const user = await ensureAuthUser();
+      if (!user) throw new Error("Firebase에 로그인되지 않았습니다.");
+      try {
+        await firebaseApp().database().ref().update(updates);
+      } catch (error) {
+        const code = String(error?.code || "");
+        const detail = String(error?.message || error || "알 수 없는 오류");
+        if (/permission_denied|permission denied|PERMISSION_DENIED/i.test(code + " " + detail)) {
+          throw new Error("Firebase 접근 권한이 없습니다. badminton 프로젝트의 games, members, courtAssignments 규칙과 현재 로그인 UID(" + user.uid + ")를 확인하세요.");
+        }
+        throw new Error("경기 정보 저장 실패: " + detail);
+      }
+    }
+
+    // 200ms 예약 저장이 경기 시작 이후 과거 배정을 다시 덮어쓰지 않게 정리합니다.
+    async function flushCourtAssignmentsBeforeGame() {
+      clearTimeout(assignmentsSaveTimer);
+      await assignmentSaveChain.catch(() => {});
+      if (!assignmentsDirty) return;
+      const snapshot = JSON.parse(assignmentsJson());
+      await dbPut("courtAssignments", snapshot);
+      state.assignmentVersion = JSON.stringify(snapshot);
+      lastQueuedAssignments = state.assignmentVersion;
+      assignmentsDirty = false;
+    }
 
     function normalizeMemberRecord(key, value) {
       if (!value || typeof value !== "object") return null;
@@ -4223,30 +4253,34 @@
 
     async function startGame(court, assignedPlayers = null) {
       if (!state.isAdmin) return noAdminAccess();
-      const players = assignedPlayers || Array.from(state.selected);
-      if (players.length !== 4) return toast("Assign 4 players.");
-      if (!isGameCourt(court)) return toast("게임 시작은 1~5번 게임코트에서만 가능합니다.");
-      if (activeGames().some((g) => Number(g.court) === court)) return toast(`${court} court is already playing.`);
-      const id = `game_${Date.now()}`;
+      const players = assignedPlayers ? [...assignedPlayers] : Array.from(state.selected);
+      if (players.length !== 4 || new Set(players).size !== 4) return toast("선수 4명을 중복 없이 배정해주세요.");
+      if (!isGameCourt(court)) return toast("경기 시작은 1~5번 코트에서만 가능합니다.");
+      if (activeGames().some(g => Number(g.court) === Number(court))) return toast(`${court}번 코트는 이미 경기 중입니다.`);
+      if (!(state.courtAssignments[court] || []).length) return toast("코트 배정을 먼저 저장해주세요.");
+      const id = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const startedAt = now();
-      const updates = {
-        [`games/${id}`]: { id, court, players, status: "PLAY", startedAt }
-      };
-      players.forEach((id) => {
-        const m = state.members[id];
-        updates[`members/${id}/status`] = "PLAY";
-        updates[`members/${id}/games`] = Number(m?.games || 0) + 1;
-        updates[`members/${id}/updatedAt`] = startedAt;
+      const updates = { [`games/${id}`]: { id, court, players, status: "PLAY", startedAt } };
+      players.forEach(playerId => {
+        const member = state.members[playerId];
+        updates[`members/${playerId}/status`] = "PLAY";
+        updates[`members/${playerId}/games`] = Number(member?.games || 0) + 1;
+        updates[`members/${playerId}/updatedAt`] = startedAt;
       });
+      // 게임 시작과 선수들의 상태 변경, 코트 배정 해제를 하나의 요청으로 기록합니다.
+      updates[`courtAssignments/${court}`] = null;
       try {
-        await dbPatch("/", updates);
+        await flushCourtAssignmentsBeforeGame();
+        await saveGameUpdates(updates);
       } catch (error) {
-        console.error(error);
-        toast("게임 시작 저장에 실패했습니다. 코트 배정은 유지됩니다.");
+        console.error("경기 시작 오류:", error);
+        toast(error.message || "경기 시작 저장에 실패했습니다. 코트 배정은 유지됩니다.");
         return;
       }
       delete state.courtAssignments[court];
-      scheduleAssignmentSave();
+      state.assignmentVersion = assignmentsJson();
+      lastQueuedAssignments = state.assignmentVersion;
+      assignmentsDirty = false;
       state.selected.clear();
       closeModal();
       await loadData();
@@ -4277,12 +4311,18 @@
       // 오늘 경기 횟수 캐시도 새 객체 참조로 무효화합니다.
       state.games = { ...state.games, [gameId]: { ...game, status: "DONE", endedAt } };
       const promotedFrom = promoteNextWaitingCourt(Number(game.court));
-      if (promotedFrom) scheduleAssignmentSave();
+      if (promotedFrom) updates["courtAssignments"] = { ...state.courtAssignments };
       renderAll();
       toast(promotedFrom ? `${promotedFrom}번 대기팀이 ${game.court}번 코트로 이동했습니다.` : "게임이 종료되었습니다.");
       try {
-        await dbPatch("/", updates);
-        // 전체 회원/게임 데이터 재조회는 생략하여 네트워크 지연을 제거합니다.
+        await saveGameUpdates(updates);
+        if (promotedFrom) {
+          clearTimeout(assignmentsSaveTimer);
+          state.assignmentVersion = assignmentsJson();
+          lastQueuedAssignments = state.assignmentVersion;
+          assignmentsDirty = false;
+        }
+        // 실시간 리스너가 모든 회원 화면을 자동 갱신합니다.
       } catch (error) {
         console.error("game finish save failed", error);
         state.games = { ...state.games, [gameId]: game };
