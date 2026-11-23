@@ -1953,7 +1953,7 @@
     const KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDoZBWDi";
     // 대표 계정: Firebase Authentication에서 생성한 사용자 UID를 아래에 설정하세요.
     // 현재 값은 기존 Firebase 운영자 UID이며 신규 대표 계정이면 반드시 변경해야 합니다.
-    const ADMIN_UID = "4lNFEc07StbUkENLfpUyzrPj03m1";
+    const ADMIN_UID = "kWohYQoefnftmdYT8x77Beyrq1n2";
     const LOCAL_ADMIN_ID = "judoong";
     const LOCAL_ADMIN_PASSWORD = "1111";
     const FIREBASE_CONFIG = {
@@ -2325,7 +2325,7 @@
       return true;
     }
 
-    // v26: 실시간 구독으로 30명 이상 접속 시에도 대기/코트/경기 시작을 함께 갱신합니다.
+    // v30: 접속 인원과 무관하게 같은 Firebase DB를 사용하는 모든 회원의 화면에 변경사항을 전파합니다.
     // 읽기 전용 리스너이며 기존 REST 저장/운영진 권한 처리는 유지합니다.
     let liveSubscriptions = [];
     let liveRenderTimer = null;
@@ -2344,7 +2344,8 @@
         const listen = (ref, eventType, callback) => {
           ref.on(eventType, callback, error => {
             console.warn("Firebase 실시간 구독 오류:", error);
-            // 연결 중단시 주기적 동기화가 보완합니다.
+            // 실패한 리스너는 정리한 뒤 폴링 주기에서 재연결합니다.
+            liveSubscriptions.splice(0).forEach(stop => { try { stop(); } catch (_) {} });
             liveSyncActive = false;
           });
           liveSubscriptions.push(() => ref.off(eventType, callback));
@@ -2352,10 +2353,14 @@
 
         // 모든 회원에게 대기/휴식/경기 상태를 동일하게 보여줍니다.
         listen(database.ref("members"), "value", snapshot => {
-          if (pendingStatusChanges.size) return;
           const raw = snapshot.val();
           if (!raw) return;
-          state.members = normalizeMembers(raw);
+          const incoming = normalizeMembers(raw);
+          // 회원 한 명이 저장 중이어도 나머지 49명에게 발생한 변경은 즉시 표시합니다.
+          for (const id of pendingStatusChanges) {
+            if (state.members[id]) incoming[id] = state.members[id];
+          }
+          state.members = incoming;
           const ownId = sessionStorage.getItem("clubUserId");
           if (ownId && state.members[ownId]) {
             state.currentUser = state.members[ownId];
@@ -2788,6 +2793,7 @@
                 return toast("이동할 코트에 경기 전 배정이 있습니다. 다른 코트를 선택하세요.");
               }
               const updates = { [`games/${sourceGame.id}/court`]: to };
+              // 현재 진행 중인 경기의 선수 4명과 시작 시간은 그대로 두고 코트만 이동합니다.
               if (targetGame) updates[`games/${targetGame.id}/court`] = from;
               else {
                 // 대상 코트에 다른 진행 중 경기가 없는지도 확인합니다.
@@ -3583,7 +3589,7 @@
     // 브라우저 HTML에 대표 비밀번호를 저장하지 않습니다.
     function openRepresentativeLogin() {
       showModal("주둥아리 대표 로그인", `
-        <p style="line-height:1.6;margin-top:0">대표 계정에서 퀵배정·경기 시작·코트 변경을 운영하면 접속 회원의 화면에도 Firebase로 공유됩니다.</p>
+        <p style="line-height:1.6;margin-top:0">대표 계정에서 퀵배정·경기 시작·진행 중 코트 변경을 운영하면 접속한 회원 모두가 Firebase를 통해 동일한 경기·대기 현황을 확인할 수 있습니다.</p>
         <div class="field full"><label for="repEmail">대표 계정 이메일</label><input id="repEmail" type="email" autocomplete="username" placeholder="Firebase에 등록된 대표 이메일"></div>
         <div class="field full"><label for="repPassword">비밀번호</label><input id="repPassword" type="password" autocomplete="current-password" placeholder="대표 계정 비밀번호"></div>
         <p style="font-size:12px;color:#63717c;line-height:1.5">대표 계정은 Firebase Authentication에 생성하고, 아래 설정의 대표 UID와 연결해야 합니다.</p>
@@ -4382,10 +4388,40 @@
       if (players.length !== 4) return toast("Assign 4 players.");
       if (!isGameCourt(court)) return toast("게임 시작은 1~5번 게임코트에서만 가능합니다.");
       if (activeGames().some((g) => Number(g.court) === court)) return toast(`${court} court is already playing.`);
+      // 모든 단말이 같은 Firebase 변경 이벤트에서 경기 상태와 배정을 함께 수신합니다.
+      // 기존 코트 배정의 지연 저장이 경기 시작 직후 덮어쓰지 않도록 먼저 완료합니다.
+      clearTimeout(assignmentsSaveTimer);
+      await assignmentSaveChain.catch(() => {});
+      if (assignmentsDirty) {
+        try {
+          const pending = JSON.parse(assignmentsJson());
+          await dbPut("courtAssignments", pending);
+          lastQueuedAssignments = JSON.stringify(pending);
+          assignmentsDirty = false;
+        } catch (error) {
+          return toast("경기 전 코트 배정 동기화에 실패했습니다. 다시 시도하세요.");
+        }
+      }
+      const serverAssignments = await dbGet("courtAssignments").catch(() => null);
+      if (serverAssignments === null) {
+        return toast("코트 배정 확인에 실패했습니다. 잠시 후 다시 시도하세요.");
+      }
+      const remoteIds = serverAssignments?.[court] || [];
+      if (JSON.stringify(remoteIds) !== JSON.stringify(players)) {
+        await loadData();
+        return toast("다른 기기에서 배정이 변경되었습니다. 화면을 확인한 뒤 다시 시작하세요.");
+      }
+      const remoteGames = await dbGet("games").catch(() => null);
+      if (remoteGames === null) return toast("현재 경기 확인에 실패했습니다. 다시 시도하세요.");
+      if (Object.values(remoteGames || {}).some(g => g?.status === "PLAY" && Number(g.court) === Number(court))) {
+        await loadData();
+        return toast("이 코트에서 이미 경기가 진행 중입니다.");
+      }
       const id = `game_${Date.now()}`;
       const startedAt = now();
       const updates = {
-        [`games/${id}`]: { id, court, players, status: "PLAY", startedAt }
+        [`games/${id}`]: { id, court, players, status: "PLAY", startedAt },
+        [`courtAssignments/${court}`]: null
       };
       players.forEach((id) => {
         const m = state.members[id];
@@ -4401,7 +4437,10 @@
         return;
       }
       delete state.courtAssignments[court];
-      scheduleAssignmentSave();
+      // 경기/배정의 원자적 저장이 끝났으므로 추가 저장 요청은 만들지 않습니다.
+      state.assignmentVersion = assignmentsJson();
+      lastQueuedAssignments = state.assignmentVersion;
+      assignmentsDirty = false;
       state.selected.clear();
       closeModal();
       await loadData();
