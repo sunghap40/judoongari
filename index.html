@@ -1992,6 +1992,7 @@
       courtAssignments: {},
       currentUser: null,
       authUser: null,
+      isRepresentative: false,
       isAdmin: sessionStorage.getItem("clubAdmin") === "1",
       adminUid: ADMIN_UID,
       memberTab: "member",
@@ -2390,6 +2391,7 @@
         return;
       }
       state.currentUser = member;
+      state.isRepresentative = false;
       sessionStorage.setItem("clubUserId", member.id);
       // v20 호환: 회원관리에서 운영진으로 지정된 회원은 기존처럼 운영진 메뉴를 사용합니다.
       state.isAdmin = member.admin === true;
@@ -2419,6 +2421,7 @@
         createdAt: now(), updatedAt: now()
       };
       state.currentUser = guest;
+      state.isRepresentative = false;
       state.isAdmin = false;
       sessionStorage.removeItem("clubAdmin");
       sessionStorage.setItem("clubUserId", id);
@@ -2429,22 +2432,40 @@
     }
 
     async function logout() {
-      const userId = sessionStorage.getItem("clubUserId");
-      if (userId && state.members[userId]) {
-        await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
-      }
+      // 대표 계정에는 회원 ID가 없습니다. 과거 브라우저의 회원 ID를 퇴장시키지 않습니다.
+      const wasRepresentative = state.isRepresentative ||
+        (authService().currentUser?.uid === ADMIN_UID && !authService().currentUser?.isAnonymous);
+      const userId = wasRepresentative ? null : sessionStorage.getItem("clubUserId");
+      // UI에서 우선 로그아웃해 Firebase 쓰기 실패로 화면이 갇히지 않게 합니다.
       sessionStorage.removeItem("clubUserId");
       sessionStorage.removeItem("clubAdmin");
-      if (authService().currentUser && !authService().currentUser.isAnonymous) {
-        await authService().signOut();
-      }
       state.isAdmin = false;
+      state.isRepresentative = false;
       state.currentUser = null;
       state.selected.clear();
-      await loadData();
+      closeModal();
       $("appPage").classList.add("hidden");
       $("loginPage").classList.remove("hidden");
-      toast("회원이 정상적으로 퇴장 되었습니다.");
+      let failed = false;
+      try {
+        if (userId && state.members[userId]) {
+          await dbPatch(`members/${userId}`, { status: "DEFAULT", updatedAt: now() });
+          state.members[userId].status = "DEFAULT";
+        }
+        if (authService().currentUser && !authService().currentUser.isAnonymous) {
+          await authService().signOut();
+        }
+        state.authUser = authService().currentUser;
+      } catch (error) {
+        failed = true;
+        console.error("logout failed:", error);
+        // 인증 실패를 숨기지 않고 다시 시도할 수 있게 표시합니다.
+      }
+      if (failed) {
+        toast("퇴장 화면으로 이동했습니다. Firebase 로그아웃이 실패해 새로고침 후 확인이 필요합니다.");
+      } else {
+        toast(wasRepresentative ? "주둥아리 대표 계정에서 로그아웃했습니다." : "회원이 정상적으로 퇴장 되었습니다.");
+      }
     }
 
     function openBeginnerHelp() {
@@ -2493,9 +2514,16 @@
       $("metricAttending").textContent = attending;
       $("metricPlaying").textContent = playing;
       $("metricWaiting").textContent = waiting;
-      const id = sessionStorage.getItem("clubUserId");
-      const me = state.members[id];
-      if (me) {
+      const id = state.isRepresentative ? null : sessionStorage.getItem("clubUserId");
+      const me = id ? state.members[id] : null;
+      if (state.isRepresentative) {
+        $("homeGreeting").textContent = "주둥아리 대표님, 경기 운영을 시작하세요!";
+        $("homeMyStatus").textContent = "대표 운영 계정";
+        $("homeMyStatus").classList.remove("is-away");
+        $("homeMyDescription").textContent = "회원 대기 명단에 포함되지 않는 경기 운영 전용 계정입니다.";
+        $("restBtn").classList.add("hidden");
+        $("returnBtn").classList.add("hidden");
+      } else if (me) {
         $("homeGreeting").textContent = `${me.name}님, 즐거운 경기하세요!`;
         const label = me.status === "PLAY" ? "경기 중" : me.status === "WAIT" ? "경기 대기 중" : me.status === "REST" ? "휴식 중" : me.status === "EXCLUDED" ? "매칭 제외" : "미입장";
         $("homeMyStatus").textContent = label;
@@ -3485,12 +3513,20 @@
           await dbPut(`admins/${user.uid}`, true).catch((error) => console.warn("admin self-register failed", error));
         }
         state.isAdmin = true;
+        state.isRepresentative = Boolean(uidAllowed && !user.isAnonymous);
         sessionStorage.setItem("clubAdmin", "1");
+        if (state.isRepresentative) {
+          // 이전에 이름으로 입장했던 회원 세션이 대표 계정에 섞이지 않도록 합니다.
+          sessionStorage.removeItem("clubUserId");
+          state.currentUser = null;
+        }
         closeModal();
         $("loginPage").classList.add("hidden");
         $("appPage").classList.remove("hidden");
         if (options.targetView) {
           setView(options.targetView);
+        } else if (state.isRepresentative) {
+          setView("waiting");
         } else {
           openAdminMenu();
         }
@@ -4531,10 +4567,13 @@
       if (signedInUser && !signedInUser.isAnonymous && signedInUser.uid === ADMIN_UID) {
         state.authUser = signedInUser;
         state.isAdmin = true;
+        state.isRepresentative = true;
+        state.currentUser = null;
+        sessionStorage.removeItem("clubUserId");
         sessionStorage.setItem("clubAdmin", "1");
         showApp();
       }
-      const savedId = sessionStorage.getItem("clubUserId");
+      const savedId = state.isRepresentative ? null : sessionStorage.getItem("clubUserId");
       if (savedId && state.members[savedId]) {
         state.currentUser = state.members[savedId];
         // Refresh permission from current member record instead of a stale session flag.
