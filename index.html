@@ -2289,6 +2289,7 @@
 
     // 경기 시작 전의 배정도 모든 회원 기기에 공유합니다.
     let assignmentsDirty = false;
+    let promotionInProgress = false;
     let lastQueuedAssignments = "";
     let assignmentsSaveTimer = null;
     let assignmentSaveChain = Promise.resolve();
@@ -2873,7 +2874,7 @@
     }
 
     function renderWaiting() {
-      if (state.isAdmin && assignmentsJson() !== lastQueuedAssignments) scheduleAssignmentSave();
+      if (state.isAdmin && !promotionInProgress && assignmentsJson() !== lastQueuedAssignments) scheduleAssignmentSave();
       const grid = $("courtGrid");
       const assignedIds = assignedPlayerIds();
       grid.innerHTML = "";
@@ -4300,6 +4301,57 @@
       setView("waiting");
       toast("게임을 시작했습니다.");
     }
+    // 1~5번 경기 코트 종료 후 6~10번 대기 코트를 최신 Firebase 값에서 직접 승격.
+    // Firebase transaction을 사용해 다른 운영진 기기의 배정과 덮어쓰기가 충돌하지 않게 합니다.
+    async function promoteWaitingAfterFinish(openCourt) {
+      if (!isGameCourt(openCourt)) return { fromCourt: null, reason: "invalid" };
+      // 이전 배정 저장이 남아 있으면 순서대로 마친 후 최신 DB에서 처리합니다.
+      clearTimeout(assignmentsSaveTimer);
+      await assignmentSaveChain.catch(() => {});
+      // 대기팀이 저장 대기 중이었다면 먼저 서버에 반영합니다.
+      if (assignmentsDirty) await flushCourtAssignmentsBeforeGame();
+      let promotedFrom = null;
+      let reason = "empty";
+      promotionInProgress = true;
+      assignmentsDirty = true; // 실시간 이벤트가 거래 중인 배정을 덮지 못하도록 보호
+      try {
+        const reference = firebaseApp().database().ref("courtAssignments");
+        const outcome = await reference.transaction(current => {
+          const assignments = current && typeof current === "object" ? { ...current } : {};
+          if (Array.isArray(assignments[openCourt]) && assignments[openCourt].length) {
+            reason = "occupied";
+            return; // 이미 다른 코트 배정이 있으면 트랜잭션 중단
+          }
+          const source = WAIT_COURTS.find(c => Array.isArray(assignments[c]) && assignments[c].length === 4);
+          if (!source) { reason = "empty"; return; }
+          const members = [...assignments[source]];
+          // 중복 회원이 다른 코트에 이미 배정돼 있으면 잘못된 승격을 막습니다.
+          const duplicated = Object.entries(assignments).some(([court, ids]) =>
+            Number(court) !== source && Array.isArray(ids) && ids.some(id => members.includes(id)));
+          if (duplicated) { reason = "duplicate"; return; }
+          assignments[openCourt] = members;
+          delete assignments[source];
+          const waitingGroups = WAIT_COURTS.map(c => assignments[c]).filter(ids => Array.isArray(ids) && ids.length);
+          WAIT_COURTS.forEach(c => delete assignments[c]);
+          waitingGroups.forEach((ids, idx) => { assignments[WAIT_COURTS[idx]] = ids; });
+          promotedFrom = source;
+          return assignments;
+        }, undefined, false);
+        // DB의 확정된 스냅샷을 로컬에 적용합니다.
+        if (outcome?.snapshot) state.courtAssignments = outcome.snapshot.val() || {};
+        state.assignmentVersion = assignmentsJson();
+        lastQueuedAssignments = state.assignmentVersion;
+        if (outcome?.committed && promotedFrom) return { fromCourt: promotedFrom, reason: "promoted" };
+        return { fromCourt: null, reason };
+      } finally {
+        // 실패 직후 화면 재그리기가 이전 배정을 다시 서버에 쓰지 않도록 보호합니다.
+        state.assignmentVersion = assignmentsJson();
+        lastQueuedAssignments = state.assignmentVersion;
+        assignmentsDirty = false;
+        promotionInProgress = false;
+      }
+    }
+
     const finishingGames = new Set();
     async function finishGame(gameId) {
       if (!state.isAdmin) return noAdminAccess();
@@ -4331,26 +4383,20 @@
         renderAll();
         toast("게임이 종료되었습니다.");
 
-        // 대기 코트가 있으면 별도로 승격합니다. 실패해도 종료된 경기를 되돌리지 않습니다.
-        const originalAssignments = Object.fromEntries(
-          Object.entries(state.courtAssignments || {}).map(([court, ids]) => [court, [...ids]]));
-        const promotedFrom = promoteNextWaitingCourt(Number(game.court));
-        if (promotedFrom) {
-          clearTimeout(assignmentsSaveTimer);
-          try {
-            await dbPut("courtAssignments", { ...state.courtAssignments });
-            state.assignmentVersion = assignmentsJson();
-            lastQueuedAssignments = state.assignmentVersion;
-            assignmentsDirty = false;
-            toast(`${promotedFrom}번 대기팀이 ${game.court}번 코트로 이동했습니다.`);
-          } catch (promotionError) {
-            console.error("대기팀 자동 이동 저장 실패:", promotionError);
-            state.courtAssignments = originalAssignments;
-            // 대기팀은 기존 대기 코트에 남겨 둡니다. 경기 종료는 이미 DB에 확정되었습니다.
-            toast("경기는 종료됐습니다. 대기팀 자동 이동만 실패해 기존 대기 코트에 남았습니다.");
+        // 실제 서버의 대기팀 기준으로 자동 승격합니다. 브라우저의 오래된 배정 정보는 쓰지 않습니다.
+        // 종료 저장과 분리하여 승격 실패가 경기 종료에 영향을 주지 않도록 합니다.
+        try {
+          const result = await promoteWaitingAfterFinish(Number(game.court));
+          if (result.fromCourt) {
+            toast(`${result.fromCourt}번 대기팀이 ${game.court}번 코트로 이동했습니다.`);
+          } else if (result.reason === "occupied") {
+            toast("경기는 종료됐습니다. 해당 코트에 다른 배정이 있어 대기팀을 옮기지 않았습니다.");
           }
-          renderAll();
+        } catch (promotionError) {
+          console.error("대기팀 자동 이동 저장 실패:", promotionError);
+          toast(`경기는 종료됐습니다. 대기팀 자동 이동만 실패했습니다: ${promotionError?.message || promotionError}`);
         }
+        renderAll();
       } catch (error) {
         console.error("경기 종료 저장 실패:", error);
         toast(error?.message || "경기 종료 저장에 실패했습니다. Firebase 연결과 권한을 확인하세요.");
